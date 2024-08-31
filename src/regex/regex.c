@@ -6,6 +6,36 @@
  */
 
 #include "regex.h" 
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+
+/**
+ * Tokens that we can use for parsing
+ */
+enum token {
+	STAR,
+	QUESTION_MARK,
+	LBRACKET,
+	RBRACKET,
+	LPAREN,
+	RPAREN,
+	CARROT,
+	DOLLAR,
+	DOT,
+	PIPE,
+	BACKSLASH,
+	LETTER,
+	NUMBER,
+	DASH,
+	UNDERSCORE,
+	FORWARDSLASH,
+	COLON,
+	SEMICOLON,
+	EQUALS
+};
+
 
 typedef struct {
 	int is_end;
@@ -21,6 +51,31 @@ typedef struct {
 
 } automaton_t;
 
+
+
+/**
+ * Make sure that the user entered a valid regular expression before we try 
+ * to create a DFA with it
+ */
+static int validate_regular_expression(char* pattern){
+	//Just in case
+	if(pattern == NULL){
+		printf("REGEX ERROR: Invalid pattern entered\n");
+		return 0;
+	}
+
+	//Grab the pattern length
+	u_int32_t length = strlen(pattern);
+
+	if(length == 0){
+		printf("REGEX ERROR: Invalid pattern entered\n");
+		return 0;
+	}
+
+
+	//If we get here, we know it's good
+	return 1;
+}
 
 
 //STUB
