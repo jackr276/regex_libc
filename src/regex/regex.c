@@ -14,6 +14,9 @@
 
 #define ACCEPTING 257
 #define SPLIT 256
+#define START 0
+#define REGEX_LEN 150
+#define CONCATENATION '`'
 
 //For convenience
 typedef struct state_t state_t;
@@ -35,6 +38,10 @@ struct state_t {
 };
 
 
+/**
+ * Define a list of the arrows or transitions between
+ * states
+ */
 union arrow_list_t {
 	arrow_list_t* next;
 	state_t* state;
@@ -86,18 +93,145 @@ static NFA_fragement_t* create_fragment(state_t* start, arrow_list_t* arrows){
 
 
 /**
+ * Convert a regular expression from infix to postfix notation. The character
+ * '`' is used as the explicit concatentation operator
+ */
+static char* in_to_post(char* regex){
+	//Allocate space with calloc so we don't have to worry about null termination
+	char* postfix = calloc(REGEX_LEN * 2, sizeof(char));
+	//Use buffer as our cursor
+	char* buffer = postfix;
+
+	//Create a stack for us to use
+	stack_t* stack = create_stack();
+
+	//The number of '|' and regular chars that we see when inside parenthesis
+	struct paren_alt_reg {
+		u_int8_t paren_alt;
+		u_int8_t paren_reg;
+	};
+
+	//The number of regular characters that we've seen
+	u_int8_t num_reg_char = 0;
+	//The number of "pipes" we've seen
+	u_int8_t num_pipes = 0;
+
+	//A cursor that we have so we don't mess with the original reference
+	//Go through every char in the regex
+	for(char* cursor = regex; *cursor != '\0'; cursor++){
+		//Switch on the char that we have
+		switch(*cursor){
+			//Open paren
+			case '(':
+				break;
+				
+
+			//Alternate operator
+			case '|':
+				//If we haven't seen any of these, it's bad
+				if(num_reg_char == 0){
+					printf("REGEX ERROR: Cannot use '|' without two valid operands.\n");
+					//Dealloc stack
+					destroy_stack(stack);
+					//Destroy buffer
+					free(buffer);
+					return NULL;
+				}
+
+				//So long as we've counted some regular characters
+				while(num_reg_char > 1){
+					//Add a concat operator
+					*buffer = CONCATENATION;
+					//Move up the cursor
+					buffer++;
+					num_reg_char--;
+				}
+
+				//Increment for later on
+				num_pipes++;
+				break;
+
+			//O or many, 1 or many, 0 or 1 operators
+			case '*':
+			case '+':
+			case '?':
+				//If we've seen no real chars, then these are invalid
+				if(num_reg_char == 0){
+					printf("REGEX ERROR: Cannot use operator %c without valid operands.\n", *cursor);
+					//Dealloc stack
+					destroy_stack(stack);
+					//Destroy buffer
+					free(buffer);
+					return NULL;
+				}
+
+				//Add these into the postfix
+				*buffer = *cursor;
+				buffer++;
+				break;
+
+			//Anything that isn't a special character is treated normally
+			default:
+				//If we've already seen more than one regular char, we need to add a concat operator
+				if(num_reg_char > 1){
+					*buffer = CONCATENATION;
+					buffer++;
+					num_reg_char--;
+				}
+
+				num_reg_char++;
+				//Add the character in
+				*buffer = *cursor;
+				buffer++;
+				break;
+		}
+	}
+
+	//Add in any remaining needed concat operators
+	for(; num_reg_char > 1; num_reg_char--){
+		*buffer = CONCATENATION;
+		buffer++;
+	}
+
+	//Add in all of the pipes in postfix order
+	for(; num_pipes > 0; num_pipes--){
+		*buffer = '|';
+		buffer++;
+	}
+
+	//Destroy the stack we used here
+	destroy_stack(stack);
+	//Return the buffer
+	return postfix;
+}
+
+
+/**
  * Build an NFA for a regular expression defined by the pattern
  * passed in
  */
 regex_t define_regular_expression(char* pattern){
 	//Just in case
 	if(pattern == NULL || strlen(pattern) == 0){
-		printf("REGEX ERROR: Pattern cannot be null or empty");
+		printf("REGEX ERROR: Pattern cannot be null or empty\n");
 		exit(1);
 	}
 
+	//Set a hard limit. I don't see a situation where we'd need more than 150 characters for a regex
+	if(strlen(pattern) >= 150){
+		printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
+		exit(1);
+	}
+
+	//Convert to postfix
+	char* postfix = in_to_post(pattern);
+	printf("%s\n", postfix);
+
 	//Stack allocate a regex
 	regex_t regex;
+	//Create the start state
+	state_t* start = create_state(START, NULL, NULL);
+	regex.DFA = start;
 
 	//Grab a copy so we don't mess with the pattern
 	char* cursor = pattern;
@@ -108,9 +242,12 @@ regex_t define_regular_expression(char* pattern){
 		char ch = *cursor;
 
 		switch(ch){
+			
+
 
 			//Any literal character
 			default:
+
 				break;
 				
 

@@ -20,7 +20,7 @@ int main(){
 	printf("%s ", (char*)pop(stack));
 	printf("%s\n", (char*)pop(stack));
 
-	define_regular_expression("ex");
+	define_regular_expression("ab+c*|bab");
 
 
 	destroy_stack(stack);
