@@ -8,11 +8,14 @@
 
 #include <sys/types.h>
 
+//Allows us to use stack_node_t as a type
+typedef struct stack_node_t stack_node_t;
+
 /**
  * Nodes for our stack
  */
 struct stack_node_t {
-	struct stack_node_t* next;
+	stack_node_t* next;
 	void* data;
 };
 

@@ -35,7 +35,7 @@ void push(stack_t* stack, void* element){
 	}
 
 	//Allocate a new node
-	struct stack_node_t* new = (struct stack_node_t*)malloc(sizeof(struct stack_node_t));
+	stack_node_t* new = (stack_node_t*)malloc(sizeof(stack_node_t));
 	//Store the data
 	new->data = element;
 
@@ -67,7 +67,7 @@ void* pop(stack_t* stack){
 	//Grab the data
 	void* ptr = stack->top->data;
 	
-	struct stack_node_t* temp = stack->top;
+	stack_node_t* temp = stack->top;
 
 	//"Delete" the node from the stack
 	stack->top = stack->top->next;
@@ -113,7 +113,7 @@ void destroy_stack(stack_t* stack){
 
 	//Define a cursor and a temp
 	void* temp;
-	struct stack_node_t* cursor = stack->top;
+	stack_node_t* cursor = stack->top;
 
 	//Free every node
 	while(cursor != NULL){
