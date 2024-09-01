@@ -20,6 +20,8 @@ enum token {
 	QUESTION_MARK,
 	LBRACKET,
 	RBRACKET,
+	LCURLY,
+	RCURLY,
 	LPAREN,
 	RPAREN,
 	CARROT,
@@ -99,7 +101,13 @@ static int validate_regular_expression(char* pattern){
 			case '[':
 				push(stack, "[");
 				break;
+			
+			//Same with a curly
+			case '{':
+				push(stack, "{");
+				break;
 
+			//Match closing paren 
 			case ')':
 				top = (char*)pop(stack);
 				if(top[0] != '('){
@@ -108,13 +116,41 @@ static int validate_regular_expression(char* pattern){
 				}
 				break;
 
+			//Match closing bracket
 			case ']':
 				top = (char*)pop(stack);
 				if(top[0] != '['){
-					printf("REGEX ERROR: Unmatched brakets\n");
+					printf("REGEX ERROR: Unmatched square brakets\n");
 					return 0;
 				}
 				break;
+
+			//Match closing curly bracket 
+			case '}':
+				top = (char*)pop(stack);
+				if(top[0] != '{'){
+					printf("REGEX ERROR: Unmatched curly brackets\n");
+					return 0;
+				}
+				break;
+
+			//All of these chars are allowed
+			case '*':
+			case '?':
+			case '.':
+			case '^':
+			case '$':
+			case '-':
+			case '_':
+			case '+':
+			case '=':
+			case '\\':
+			case '/':
+				break;
+
+			default:
+				break;
+				
 		}
 
 
