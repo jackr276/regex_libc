@@ -12,38 +12,38 @@
 #include <sys/types.h>
 #include "../stack/stack.h"
 
+#define ACCEPTING 257
+#define SPLIT 256
+
+//For convenience
+typedef struct state_t state_t;
+typedef struct NFA_fragement_t NFA_fragement_t;
+typedef union arrow_list_t arrow_list_t;
+
 /**
- * Tokens that we can use for parsing
+ * A struct that defines an NFA state
+ * If opt < 256, we have a labeled arrow stored in out
+ * If opt = SPLIT, we have two arrows
+ * If opt = ACCEPTING, we have an accepting state
  */
-enum token {
-	STAR,
-	QUESTION_MARK,
-	LBRACKET,
-	RBRACKET,
-	LCURLY,
-	RCURLY,
-	LPAREN,
-	RPAREN,
-	CARROT,
-	DOLLAR,
-	DOT,
-	PIPE,
-	BACKSLASH,
-	LETTER,
-	NUMBER,
-	DASH,
-	UNDERSCORE,
-	FORWARDSLASH,
-	COLON,
-	SEMICOLON,
-	EQUALS
+struct state_t {
+	u_int32_t opt;
+	//The default path
+	state_t* path;
+	//The optional second path
+	state_t* path_2;
 };
 
 
-typedef struct {
-	int is_end;
-	
-} state_t;
+union arrow_list_t {
+	arrow_list_t* next;
+	state_t* state;
+};
+
+struct NFA_fragement_t {
+	struct state_t* start;
+	arrow_list_t* arrows;
+};
 
 
 /**
