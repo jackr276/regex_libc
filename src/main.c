@@ -11,20 +11,18 @@ int main(){
 
 	stack_t* stack = create_stack();
 
-	for(int i = 0; i < 100; i++){
-		int j = i;
-		int* b = &j;
+	char* a = "Hello";
+	char* b = "World";
 
-		printf("Pushing: %d\n", *b);
-		push(stack, b);
-	}
+	push(stack, b);
+	push(stack, a);
 
-	for(int i = 1; i < 32; i++){
-		int* a = pop(stack);
-		printf("%d\n", *a);
-	}
+	printf("%s ", (char*)pop(stack));
+	printf("%s\n", (char*)pop(stack));
 
 
+
+	destroy_stack(stack);
 
 
 }

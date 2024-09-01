@@ -41,6 +41,7 @@ void push(stack_t* stack, void* element){
 
 	//Attach to the front of the stack
 	new->next = stack->top;
+	//Assign the top of the stack to be the new
 	stack->top = new;
 
 	//Increment number of nodes
@@ -63,14 +64,13 @@ void* pop(stack_t* stack){
 		return NULL;
 	}
 
-	//Grab the node
-	struct stack_node_t* temp = stack->top;
 	//Grab the data
-	void* ptr = temp->data;
+	void* ptr = stack->top->data;
+	
+	struct stack_node_t* temp = stack->top;
 
 	//"Delete" the node from the stack
-	stack->top = temp->next;
-	printf("%d\n", *(int*)(temp->next->data));
+	stack->top = stack->top->next;
 
 	//Free the node
 	free(temp);
@@ -117,15 +117,14 @@ void destroy_stack(stack_t* stack){
 
 	//Free every node
 	while(cursor != NULL){
-		temp = cursor;
-		free(temp);
-
+		//Save the cursor
+		temp = cursor; 
 		//Advance the cursor
 		cursor = cursor->next;
+		//Free the node
+		free(temp);
 	}
 
 	//Finally free the stack
 	free(stack);
 }
-
-
