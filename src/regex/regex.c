@@ -6,6 +6,7 @@
  */
 
 #include "regex.h" 
+#include <iterator>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +32,7 @@ struct state_t {
 	//The default path
 	state_t* path;
 	//The optional second path
-	state_t* path_2;
+	state_t* path_opt;
 };
 
 
@@ -40,135 +41,83 @@ union arrow_list_t {
 	state_t* state;
 };
 
+
+/**
+ * A struct that defines an NFA fragement with a list of arrows
+ * and a start state for that specific fragment. Remember, a big 
+ * NFA can be thought of as a bunch of small ones concatenated, and 
+ * that will be our approach here
+ */
 struct NFA_fragement_t {
-	struct state_t* start;
+	state_t* start;
 	arrow_list_t* arrows;
 };
 
 
 /**
- * A struct that contains everything needed for the dfa that defines
- * the regular expression
+ * Create and return a state
  */
-typedef struct {
+static state_t* create_state(u_int32_t opt, state_t* path, state_t* path_opt){
+	//Allocate a state
+ 	state_t* state = (state_t*)malloc(sizeof(state_t));
 
-} automaton_t;
+	//Assign these values
+	state->opt = opt;
+	state->path = path;
+	state->path_opt = path_opt;
 
-
-
-/**
- * Make sure that the user entered a valid regular expression before we try 
- * to create a DFA with it
- */
-static int validate_regular_expression(char* pattern){
-	//Just in case
-	if(pattern == NULL){
-		printf("REGEX ERROR: Invalid pattern entered\n");
-		return 0;
-	}
-
-	//Grab the pattern length
-	u_int32_t length = strlen(pattern);
-
-	//Make sure the length is valid
-	if(length == 0){
-		printf("REGEX ERROR: Invalid pattern entered\n");
-		return 0;
-	}
-
-	//Define a stack for paren/bracket matching
-	stack_t* stack = create_stack();
-
-	//Copy the pointer so we can iterate without affecting
-	char* cursor = pattern;
-	char ch;
-	//To hold the top of the stack when we pop
-	char* top;
-
-	//Iterate over the entire string
-	for(u_int16_t i = 0; i < length; i++){
-		//Grab the character
-		ch = *cursor;
-
-		//Switch on the character
-		switch(ch){
-			//If we see a parenthesis, we'll have to match
-			case '(':
-				push(stack, "(");
-				break;
-
-			//Same with a bracket
-			case '[':
-				push(stack, "[");
-				break;
-			
-			//Same with a curly
-			case '{':
-				push(stack, "{");
-				break;
-
-			//Match closing paren 
-			case ')':
-				top = (char*)pop(stack);
-				if(top[0] != '('){
-					printf("REGEX ERROR: Unmatched parenthesis\n");
-					return 0;
-				}
-				break;
-
-			//Match closing bracket
-			case ']':
-				top = (char*)pop(stack);
-				if(top[0] != '['){
-					printf("REGEX ERROR: Unmatched square brakets\n");
-					return 0;
-				}
-				break;
-
-			//Match closing curly bracket 
-			case '}':
-				top = (char*)pop(stack);
-				if(top[0] != '{'){
-					printf("REGEX ERROR: Unmatched curly brackets\n");
-					return 0;
-				}
-				break;
-
-			//All of these chars are allowed
-			case '*':
-			case '?':
-			case '.':
-			case '^':
-			case '$':
-			case '-':
-			case '_':
-			case '+':
-			case '=':
-			case '\\':
-			case '/':
-				break;
-
-			default:
-				break;
-				
-		}
-
-
-		//Move the stream up by one
-		cursor++;
-	}
-
-
-	//If we get here, we know it's good
-	return 1;
+	//Give the pointer back
+	return state;
 }
 
 
-//STUB
-regex_t define_regular_expression(char *pattern){
+/**
+ * Create and return a fragment
+ */
+static NFA_fragement_t* create_fragment(state_t* start, arrow_list_t* arrows){
+	//Allocate our fragment
+	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
+
+	fragment->start = start;
+	fragment->arrows = arrows;
+
+	//Return a reference to the fragment
+	return fragment;
+}
+
+
+/**
+ * Build an NFA for a regular expression defined by the pattern
+ * passed in
+ */
+regex_t define_regular_expression(char* pattern){
+	//Just in case
+	if(pattern == NULL || strlen(pattern) == 0){
+		printf("REGEX ERROR: Pattern cannot be null or empty");
+		exit(1);
+	}
+
+	//Stack allocate a regex
 	regex_t regex;
 
-	validate_regular_expression("([])");
+	//Grab a copy so we don't mess with the pattern
+	char* cursor = pattern;
+
+	//Iterate until we hit the null terminator
+	for(; *cursor != '\0'; cursor++){
+		//Grab the current char
+		char ch = *cursor;
+
+		switch(ch){
+
+			//Any literal character
+			default:
+				break;
+				
+
+		}
+	}
+
 
 	return regex;
 }
