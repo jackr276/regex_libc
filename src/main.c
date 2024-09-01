@@ -4,7 +4,7 @@
  */
 
 #include <stdio.h>
-#include "regex.h"
+#include "regex/regex.h"
 #include "stack/stack.h"
 
 int main(){
@@ -20,6 +20,7 @@ int main(){
 	printf("%s ", (char*)pop(stack));
 	printf("%s\n", (char*)pop(stack));
 
+	define_regular_expression("ex");
 
 
 	destroy_stack(stack);

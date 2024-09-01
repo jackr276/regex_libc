@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include "../stack/stack.h"
 
 /**
  * Tokens that we can use for parsing
@@ -67,9 +68,58 @@ static int validate_regular_expression(char* pattern){
 	//Grab the pattern length
 	u_int32_t length = strlen(pattern);
 
+	//Make sure the length is valid
 	if(length == 0){
 		printf("REGEX ERROR: Invalid pattern entered\n");
 		return 0;
+	}
+
+	//Define a stack for paren/bracket matching
+	stack_t* stack = create_stack();
+
+	//Copy the pointer so we can iterate without affecting
+	char* cursor = pattern;
+	char ch;
+	//To hold the top of the stack when we pop
+	char* top;
+
+	//Iterate over the entire string
+	for(u_int16_t i = 0; i < length; i++){
+		//Grab the character
+		ch = *cursor;
+
+		//Switch on the character
+		switch(ch){
+			//If we see a parenthesis, we'll have to match
+			case '(':
+				push(stack, "(");
+				break;
+
+			//Same with a bracket
+			case '[':
+				push(stack, "[");
+				break;
+
+			case ')':
+				top = (char*)pop(stack);
+				if(top[0] != '('){
+					printf("REGEX ERROR: Unmatched parenthesis\n");
+					return 0;
+				}
+				break;
+
+			case ']':
+				top = (char*)pop(stack);
+				if(top[0] != '['){
+					printf("REGEX ERROR: Unmatched brakets\n");
+					return 0;
+				}
+				break;
+		}
+
+
+		//Move the stream up by one
+		cursor++;
 	}
 
 
@@ -82,6 +132,8 @@ static int validate_regular_expression(char* pattern){
 regex_t define_regular_expression(char *pattern){
 	regex_t regex;
 
+	validate_regular_expression("([])");
+
 	return regex;
 }
 
@@ -89,5 +141,3 @@ regex_t define_regular_expression(char *pattern){
 int regex_match(regex_t regex, char *string){
 	return 0;
 }
-
-
