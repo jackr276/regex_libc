@@ -31,10 +31,10 @@ typedef union arrow_list_t arrow_list_t;
  */
 struct state_t {
 	u_int8_t opt;
-	//The default path
-	state_t* path;
-	//The optional second path
-	state_t* path_opt;
+	//The default next 
+	state_t* next;
+	//The optional second next for alternating states 
+	state_t* next_opt;
 };
 
 
@@ -55,7 +55,9 @@ union arrow_list_t {
  * that will be our approach here
  */
 struct NFA_fragement_t {
+	//The start state of the fragment
 	state_t* start;
+	//The linked list of all arrows or transitions out of the state
 	arrow_list_t* arrows;
 };
 
@@ -63,14 +65,14 @@ struct NFA_fragement_t {
 /**
  * Create and return a state
  */
-static state_t* create_state(u_int32_t opt, state_t* path, state_t* path_opt){
+static state_t* create_state(u_int32_t opt, state_t* next, state_t* next_opt){
 	//Allocate a state
  	state_t* state = (state_t*)malloc(sizeof(state_t));
 
 	//Assign these values
 	state->opt = opt;
-	state->path = path;
-	state->path_opt = path_opt;
+	state->next = next;
+	state->next_opt = next;
 
 	//Give the pointer back
 	return state;
@@ -279,6 +281,20 @@ static char* in_to_post(char* regex){
 
 
 /**
+ * Create a list containing a single arrow to "out" which is NULL
+ */
+static arrow_list_t* singleton_list(state_t* out){
+	//Convert to an arrow list, the union type allows us to do this
+	arrow_list_t* l = (arrow_list_t*)out;
+
+	//The next pointer is NULL, this hasn't been attached to any other states yet
+	l->next = NULL;
+
+	//Return the pointer
+	return l;
+}
+
+/**
  * Build an NFA for a regular expression defined by the pattern
  * passed in
  */
@@ -295,38 +311,60 @@ regex_t define_regular_expression(char* pattern){
 		exit(1);
 	}
 
-	//Convert to postfix
+	//Convert to postfix before applying our algorithm
 	char* postfix = in_to_post(pattern);
-	printf("%s\n", postfix);
 
 	//Stack allocate a regex
 	regex_t regex;
-	//Create the start state
-	state_t* start = create_state(START, NULL, NULL);
-	regex.DFA = start;
+	//Set to NULL as a flag
+	regex.DFA = NULL;
+
+	//Create a stack for pushing/popping
+	stack_t* stack = create_stack();
+
+	//Keep track of chars processed
+	u_int16_t num_processed = 0;
 
 	//Grab a copy so we don't mess with the pattern
-	char* cursor = pattern;
+	char* cursor = postfix;
 
 	//Iterate until we hit the null terminator
 	for(; *cursor != '\0'; cursor++){
 		//Grab the current char
 		char ch = *cursor;
 
+		//Switch on the character
 		switch(ch){
+			case '+':
+
 			
 
 
-			//Any literal character
+			//Any character that is not one of the special characters
 			default:
+				//One more processed
+				num_processed++;
+				//Create a new state with the charcter, and no attached states
+				state_t* s = create_state(ch, NULL, NULL);
+				//Create a fragment
+				NFA_fragement_t* fragment = create_fragment(s,  singleton_list(s->next));
+
+				//Push the fragment onto the stack. We will pop it off when we reach operators
+				push(stack,  fragment);
+
+				//Assign the start state TODO may change
+				if(regex.DFA == NULL){
+					regex.DFA = s;
+				}
 
 				break;
-				
-
 		}
 	}
 
 
+	//Cleanup
+	free(postfix);
+	destroy_stack(stack);
 	return regex;
 }
 
