@@ -12,8 +12,8 @@
 #include <sys/types.h>
 #include "../stack/stack.h"
 
-#define ACCEPTING 257
-#define SPLIT 256
+#define ACCEPTING 128
+#define SPLIT 127 
 #define START 0
 #define REGEX_LEN 150
 #define CONCATENATION '`'
@@ -30,7 +30,7 @@ typedef union arrow_list_t arrow_list_t;
  * If opt = ACCEPTING, we have an accepting state
  */
 struct state_t {
-	u_int32_t opt;
+	u_int8_t opt;
 	//The default path
 	state_t* path;
 	//The optional second path
@@ -123,6 +123,12 @@ static char* in_to_post(char* regex){
 	//A cursor that we have so we don't mess with the original reference
 	//Go through every char in the regex
 	for(char* cursor = regex; *cursor != '\0'; cursor++){
+		//Ensure that we actually have printable chars in here
+		if(*cursor < 33 || *cursor > 126){
+			printf("REGEX ERROR: Unprintable characters detected.\n");
+			return NULL;
+		}
+
 		//Switch on the char that we have
 		switch(*cursor){
 			//Open paren
