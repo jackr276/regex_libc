@@ -189,7 +189,7 @@ static char* in_to_post(char* regex){
 					buffer++;
 				}
 
-				//Switch back to what should be the paren struct pointer
+				//Switch back to what should be the paren struct pointer that we were working with
 				p--;
 
 				//Restore these now that the parens are over
@@ -221,7 +221,7 @@ static char* in_to_post(char* regex){
 					num_reg_char--;
 				}
 
-				//Increment for later on
+				//Increment for later on, because this is postfix, we have to add these back on at the end
 				num_pipes++;
 				break;
 
@@ -253,6 +253,7 @@ static char* in_to_post(char* regex){
 					num_reg_char--;
 				}
 
+				//We've seen one more regular(non-special) character
 				num_reg_char++;
 				//Add the character in
 				*buffer = *cursor;
@@ -281,9 +282,10 @@ static char* in_to_post(char* regex){
 
 
 /**
- * Create a list containing a single arrow to "out" which is NULL
+ * Create a list containing a single arrow to "out" which is NULL. The state out is always uninitialized, which
+ * means that we can actually reuse the pointer to it's pointer as an arrowlist as well
  */
-static arrow_list_t* singleton_list(state_t* out){
+static arrow_list_t* singleton_list(state_t** out){
 	//Convert to an arrow list, the union type allows us to do this
 	arrow_list_t* l = (arrow_list_t*)out;
 
@@ -314,6 +316,25 @@ void concatenate_states(arrow_list_t* out_list, state_t* start){
 
 
 /**
+ * Connect the two linked lists of list_1 and list_2 to be one big linked list
+ * with list_1 as the head
+ */
+arrow_list_t* concatenate_lists(arrow_list_t* list_1, arrow_list_t* list_2){
+	//A cursor for traversal
+	arrow_list_t* cursor = list_1;
+
+	//Find the tail of list 1
+	while(cursor->next != NULL){
+		cursor = cursor->next;
+	}
+
+	//Concatenate the lists
+	cursor->next = list_2;
+
+	return list_1;
+}
+
+/**
  * Build an NFA for a regular expression defined by the pattern
  * passed in
  */
@@ -341,14 +362,15 @@ regex_t define_regular_expression(char* pattern){
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
 
+	//Declare these for use 
+	NFA_fragement_t* frag_2;
+	NFA_fragement_t* frag_1;
+
 	//Keep track of chars processed
 	u_int16_t num_processed = 0;
 
-	//Grab a copy so we don't mess with the pattern
-	char* cursor = postfix;
-
 	//Iterate until we hit the null terminator
-	for(; *cursor != '\0'; cursor++){
+	for(char* cursor = postfix; *cursor != '\0'; cursor++){
 		//Grab the current char
 		char ch = *cursor;
 
@@ -360,11 +382,31 @@ regex_t define_regular_expression(char* pattern){
 				num_processed++;
 				
 				//Pop the 2 most recent literals off of the stack
-				NFA_fragement_t* frag_2 = (NFA_fragement_t*)pop(stack);
-				NFA_fragement_t* frag_1 = (NFA_fragement_t*)pop(stack);
+				frag_2 = (NFA_fragement_t*)pop(stack);
+			    frag_1 = (NFA_fragement_t*)pop(stack);
 
 				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
 				concatenate_states(frag_1->arrows, frag_2->start);
+
+				break;
+
+			//Alternate state
+			case '|':
+				num_processed++;
+				//Grab the two most recent fragments off of the stack
+				frag_2 = (NFA_fragement_t*)pop(stack);
+				frag_1 = (NFA_fragement_t*)pop(stack);
+
+				//Create a new special "split" state that acts as a fork in the road between the two
+				//fragment statrt states
+				state_t* split = create_state(SPLIT, frag_1->start,  frag_2->start);
+
+				//Append the arrow lists of the two fragments so that the new state split has them both
+				arrow_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
+
+				//Push the newly made state and its transition list onto the stack
+				push(stack, create_fragment(split,  combined));
+
 				break;
 
 
@@ -375,7 +417,7 @@ regex_t define_regular_expression(char* pattern){
 				//Create a new state with the charcter, and no attached states
 				state_t* s = create_state(ch, NULL, NULL);
 				//Create a fragment
-				NFA_fragement_t* fragment = create_fragment(s,  singleton_list(s->next));
+				NFA_fragement_t* fragment = create_fragment(s,  singleton_list(&(s->next)));
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack,  fragment);
@@ -397,6 +439,6 @@ regex_t define_regular_expression(char* pattern){
 }
 
 //STUB
-int regex_match(regex_t regex, char *string){
+int regex_match(regex_t regex, char* string){
 	return 0;
 }
