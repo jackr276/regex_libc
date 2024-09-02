@@ -294,6 +294,25 @@ static arrow_list_t* singleton_list(state_t* out){
 	return l;
 }
 
+
+/**
+ * Path the list of states contained in the arrow_list out to point to the start state
+ * of the next fragement "start"
+ */
+void concatenate_states(arrow_list_t* out_list, state_t* start){
+	//A cursor so we don't affect the original pointer
+	arrow_list_t* cursor = out_list;
+
+	//Go over the entire outlist
+	while(cursor != NULL){
+		//Patch the cursor's state to be start
+		cursor->state = start;
+		//Advance the cursor
+		cursor = cursor->next;
+	}
+}
+
+
 /**
  * Build an NFA for a regular expression defined by the pattern
  * passed in
@@ -335,9 +354,18 @@ regex_t define_regular_expression(char* pattern){
 
 		//Switch on the character
 		switch(ch){
-			case '+':
+			//Concatenation character
+			case '`':
+				//Found one more
+				num_processed++;
+				
+				//Pop the 2 most recent literals off of the stack
+				NFA_fragement_t* frag_2 = (NFA_fragement_t*)pop(stack);
+				NFA_fragement_t* frag_1 = (NFA_fragement_t*)pop(stack);
 
-			
+				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
+				concatenate_states(frag_1->arrows, frag_2->start);
+				break;
 
 
 			//Any character that is not one of the special characters
