@@ -107,9 +107,13 @@ static char* in_to_post(char* regex){
 
 	//The number of '|' and regular chars that we see when inside parenthesis
 	struct paren_alt_reg {
-		u_int8_t paren_alt;
+		u_int8_t paren_pipes;
 		u_int8_t paren_reg;
 	};
+	
+	//Define an array of paren structs and a pointer to the start of them
+	struct paren_alt_reg parens[50];
+	struct paren_alt_reg* p = parens;
 
 	//The number of regular characters that we've seen
 	u_int8_t num_reg_char = 0;
@@ -123,8 +127,70 @@ static char* in_to_post(char* regex){
 		switch(*cursor){
 			//Open paren
 			case '(':
+				//If we see more than 50 nested parenthesis, exit
+				if(p >= parens + 50){
+					printf("REGEX ERROR: Too many parenthesis in the regex");
+					return NULL;
+				}
+
+				//Push the open paren onto the stack for matching purposes
+				push(stack, "(");
+				
+				//If we've seen chars, we'll have to concatenate
+				if(num_reg_char > 1){
+					num_reg_char--; 
+					*buffer = CONCATENATION;
+					buffer++;
+				}
+
+				//Copy the total number of pipes and regular chars 
+				p->paren_pipes = num_pipes;
+				p->paren_reg = num_reg_char;
+
+				//Next parenthesis struct
+				p++;
+
+				//These will be handled by the inside of the parenthesis now, so 0 them out
+				num_pipes = 0;
+				num_reg_char = 0;
+
 				break;
 				
+			case ')':
+				//Make sure the parenthesis match
+				if(*((char*)pop(stack)) != '('){
+					printf("REGEX ERROR: Unmatched parenthesis detected.\n");
+					return NULL;
+				}
+
+				//If this is 0, the user had empty parenthesis
+				if(num_reg_char == 0){
+					printf("REGEX ERROR: Empty parenthesis detected.\n");
+					return NULL;
+				}
+
+				//Add in any remaining needed concat operators
+				for(; num_reg_char > 1; num_reg_char--){
+					*buffer = CONCATENATION;
+					buffer++;
+				}
+
+				//Add in all of the pipes in postfix order
+				for(; num_pipes > 0; num_pipes--){
+					*buffer = '|';
+					buffer++;
+				}
+
+				//Switch back to what should be the paren struct pointer
+				p--;
+
+				//Restore these now that the parens are over
+				num_reg_char = p->paren_reg;
+				num_pipes = p->paren_pipes;
+
+				//Undercounts for some reason
+				num_reg_char++;
+				break;
 
 			//Alternate operator
 			case '|':
