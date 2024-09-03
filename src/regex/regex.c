@@ -492,12 +492,6 @@ regex_t define_regular_expression(char* pattern){
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack,  fragment);
-
-				//Assign the start state TODO may change
-				if(regex.DFA == NULL){
-					regex.DFA = s;
-				}
-
 				break;
 		}
 	}
@@ -524,6 +518,11 @@ regex_t define_regular_expression(char* pattern){
 
 	//Patch in the accepting state
 	concatenate_states(final->arrows, accepting_state);
+
+	//This fragment should be the whole DFA, so it's start state should be the start state that we need
+	regex.DFA = final->start;
+	regex.regex = pattern;
+	regex.state = REGEX_VALID;
 
 	//Cleanup
 	free(postfix);
