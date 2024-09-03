@@ -6,6 +6,8 @@
 #ifndef REGEX_H
 #define REGEX_H
 
+#include <stdint.h>
+
 typedef enum {
 	REGEX_ERR,
 	REGEX_VALID,
@@ -22,8 +24,19 @@ typedef struct {
 	void* DFA;
 	//The state that the regex is in
 	regex_state_t state;
+
 } regex_t;
 
+
+/**
+ * A return type struct that allows for value packing by regex_match()
+ */
+typedef struct {
+	//The pointer to the first match instance
+	char* match;
+	//The match status
+	int16_t match_status;
+} regex_match_t;
 
 /**
  * Define a regular expression using all regular expression rules
@@ -36,6 +49,6 @@ regex_t define_regular_expression(char* pattern);
  * the DFA in regex_t.
  * Returns 0 if no match, 1 if a match
  */
-int regex_match(regex_t regex, char* string);
+regex_match_t regex_match(regex_t regex, char* string);
 
 #endif

@@ -491,19 +491,28 @@ regex_t define_regular_expression(char* pattern){
  *
  * A value of -1 means an invalid input was passed
  */
-int regex_match(regex_t regex, char* string){
+regex_match_t regex_match(regex_t regex, char* string){
+	regex_match_t match;
+
 	//If we are given a bad regex 
-	if(regex.state == REGEX_ERR){
+	if(regex.state != REGEX_ERR){
 		printf("REGEX ERROR: Attempt to use an invalid regex.\n");
-		return -1;
+
+		//Pack in the values and return
+		match.match = NULL;
+		match.match_status = -1;
+		return match;
 	}
 
 	//If we are given a bad string
 	if(string == NULL || strlen(string) == 0){
 		printf("REGEX ERROR: Attempt to match a NULL string or a string of length 0.\n");
-		return -1;
-	}
 
+		//Pack in the values and return
+		match.match = NULL;
+		match.match_status = -1;
+		return match;
+	}
 	
-	return 0;
+	return match;
 }
