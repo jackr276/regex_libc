@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <type_traits>
 #include "../stack/stack.h"
 
 #define ACCEPTING 128
@@ -334,6 +335,7 @@ arrow_list_t* concatenate_lists(arrow_list_t* list_1, arrow_list_t* list_2){
 	return list_1;
 }
 
+
 /**
  * Build an NFA for a regular expression defined by the pattern
  * passed in.
@@ -379,6 +381,7 @@ regex_t define_regular_expression(char* pattern){
 	//Declare these for use 
 	NFA_fragement_t* frag_2;
 	NFA_fragement_t* frag_1;
+	state_t* split;
 
 	//Keep track of chars processed
 	u_int16_t num_processed = 0;
@@ -413,7 +416,7 @@ regex_t define_regular_expression(char* pattern){
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment statrt states
-				state_t* split = create_state(SPLIT, frag_1->start,  frag_2->start);
+				split = create_state(SPLIT, frag_1->start,  frag_2->start);
 
 				//Append the arrow lists of the two fragments so that the new state split has them both
 				arrow_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
@@ -425,14 +428,44 @@ regex_t define_regular_expression(char* pattern){
 
 			//0 or more, more specifically the kleene star
 			case '*':
+				num_processed++;
+
+				//Pop the most recent fragment
+				frag_1 = pop(stack);
+
+				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
+				split = create_state(SPLIT, frag_1->start, NULL);
+
+				//Make the arrows in the old fragment point back to the start of the state
+				concatenate_states(frag_1->arrows, split);
+
+				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
+				push(stack, create_fragment(split, singleton_list(&(split->next))));
+
 				break;
 
 			//1 or more, more specifically positive closure
 			case '+':
+				num_processed++;
+
+				//Grab the most recent fragment
+				frag_1 = pop(stack);
+
+				//We'll create a new state that acts as a split, going back to the the original state
+				//This acts as our optional 0 or 1
+				split = create_state(SPLIT, frag_1->start, NULL);
+
+				//Set the most recent fragment to point to this new state so that it's connected
+				concatenate_states(frag_1->arrows, split);
+
+				//Create a new fragment that represent this whole structure and push to the stack
+				push(stack, create_fragment(frag_1->start, singleton_list(&(split->next))));
+			
 				break;
 
 			//0 or 1
 			case '?':
+				num_processed++;
 				break;
 
 
