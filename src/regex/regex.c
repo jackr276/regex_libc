@@ -6,11 +6,12 @@
  */
 
 #include "regex.h" 
+#include <math.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/select.h>
 #include <sys/types.h>
-#include <type_traits>
 #include "../stack/stack.h"
 
 #define ACCEPTING 128
@@ -466,10 +467,19 @@ regex_t define_regular_expression(char* pattern){
 			//0 or 1
 			case '?':
 				num_processed++;
+
+				//Grab the most recent fragment
+				frag_1 = pop(stack);
+
+				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
+				//state. This allows for a "zero or one" function
+				split = create_state(SPLIT, frag_1->start, NULL);
+
+				//Note how for this one, we won't concatenate states at all
+
+				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
+				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, singleton_list(&(split->next)))));
 				break;
-
-
-
 
 			//Any character that is not one of the special characters
 			default:
@@ -492,8 +502,8 @@ regex_t define_regular_expression(char* pattern){
 		}
 	}
 
-	//Grab the last state off of the stack
-	state_t* final = (state_t*)pop(stack);
+	//Grab the last fragment off of the stack
+	NFA_fragement_t* final = (NFA_fragement_t*)pop(stack);
 
 	//If the stack isn't empty here, it's bad
 	if(peek(stack) != NULL){
@@ -512,6 +522,8 @@ regex_t define_regular_expression(char* pattern){
 	//Create the accepting state
 	state_t* accepting_state = create_state(ACCEPTING, NULL, NULL);
 
+	//Patch in the accepting state
+	concatenate_states(final->arrows, accepting_state);
 
 	//Cleanup
 	free(postfix);
