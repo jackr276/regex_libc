@@ -336,28 +336,42 @@ arrow_list_t* concatenate_lists(arrow_list_t* list_1, arrow_list_t* list_2){
 
 /**
  * Build an NFA for a regular expression defined by the pattern
- * passed in
+ * passed in.
+ *
+ * If anything goes wrong, a regex_t struct will be returned in a REGEX_ERR state. This regex
+ * will then be useless by the match function
  */
 regex_t define_regular_expression(char* pattern){
+	//Stack allocate a regex
+	regex_t regex;
+	//Set to NULL as a flag
+	regex.DFA = NULL;
+
 	//Just in case
 	if(pattern == NULL || strlen(pattern) == 0){
 		printf("REGEX ERROR: Pattern cannot be null or empty\n");
-		exit(1);
+		//Set this flag so that the user knows
+		regex.state = REGEX_ERR;
+		return regex;
 	}
 
 	//Set a hard limit. I don't see a situation where we'd need more than 150 characters for a regex
 	if(strlen(pattern) >= 150){
 		printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
-		exit(1);
+		regex.state = REGEX_ERR;
+		return regex;
 	}
 
 	//Convert to postfix before applying our algorithm
 	char* postfix = in_to_post(pattern);
-
-	//Stack allocate a regex
-	regex_t regex;
-	//Set to NULL as a flag
-	regex.DFA = NULL;
+	
+	//If this didn't work, we will stop and return a bad regex
+	if(postfix == NULL){
+		printf("REGEX ERROR: Postfix conversion failed.\n");
+		//Put in error state
+		regex.state = REGEX_ERR;
+		return regex;
+	}
 
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
@@ -409,6 +423,20 @@ regex_t define_regular_expression(char* pattern){
 
 				break;
 
+			//0 or more, more specifically the kleene star
+			case '*':
+				break;
+
+			//1 or more, more specifically positive closure
+			case '+':
+				break;
+
+			//0 or 1
+			case '?':
+				break;
+
+
+
 
 			//Any character that is not one of the special characters
 			default:
@@ -431,6 +459,26 @@ regex_t define_regular_expression(char* pattern){
 		}
 	}
 
+	//Grab the last state off of the stack
+	state_t* final = (state_t*)pop(stack);
+
+	//If the stack isn't empty here, it's bad
+	if(peek(stack) != NULL){
+		printf("REGEX ERROR: Bad regular expression detected.\n");
+		//Put in an error state
+		regex.state = REGEX_ERR;
+
+		//Cleanup
+		free(postfix);
+		destroy_stack(stack);
+
+		//Return the regex in an error state
+		return regex;
+	}
+
+	//Create the accepting state
+	state_t* accepting_state = create_state(ACCEPTING, NULL, NULL);
+
 
 	//Cleanup
 	free(postfix);
@@ -438,7 +486,24 @@ regex_t define_regular_expression(char* pattern){
 	return regex;
 }
 
-//STUB
+
+/**
+ *
+ * A value of -1 means an invalid input was passed
+ */
 int regex_match(regex_t regex, char* string){
+	//If we are given a bad regex 
+	if(regex.state == REGEX_ERR){
+		printf("REGEX ERROR: Attempt to use an invalid regex.\n");
+		return -1;
+	}
+
+	//If we are given a bad string
+	if(string == NULL || strlen(string) == 0){
+		printf("REGEX ERROR: Attempt to match a NULL string or a string of length 0.\n");
+		return -1;
+	}
+
+	
 	return 0;
 }

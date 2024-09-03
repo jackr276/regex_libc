@@ -6,6 +6,10 @@
 #ifndef REGEX_H
 #define REGEX_H
 
+typedef enum {
+	REGEX_ERR,
+	REGEX_VALID,
+} regex_state_t;
 
 
 /**
@@ -16,6 +20,8 @@ typedef struct {
 	char* regex;
 	//The pointer to the DFA, the user should never touch this
 	void* DFA;
+	//The state that the regex is in
+	regex_state_t state;
 } regex_t;
 
 
