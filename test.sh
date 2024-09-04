@@ -12,3 +12,5 @@ fi
 rm -r out/*
 
 gcc -Wall -Wextra ./src/main.c ./src/regex/regex.c ./src/stack/stack.c -o ./out/run
+
+./out/run

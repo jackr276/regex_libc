@@ -8,22 +8,5 @@
 #include "stack/stack.h"
 
 int main(){
-
-	stack_t* stack = create_stack();
-
-	char* a = "Hello";
-	char* b = "World";
-
-	push(stack, b);
-	push(stack, a);
-
-	printf("%s ", (char*)pop(stack));
-	printf("%s\n", (char*)pop(stack));
-
 	define_regular_expression("a(bb)+a");
-
-
-	destroy_stack(stack);
-
-
 }

@@ -6,7 +6,6 @@
  */
 
 #include "regex.h" 
-#include <math.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -289,13 +288,13 @@ static char* in_to_post(char* regex){
  */
 static arrow_list_t* singleton_list(state_t** out){
 	//Convert to an arrow list, the union type allows us to do this
-	arrow_list_t* l = (arrow_list_t*)out;
+	arrow_list_t* list = (arrow_list_t*)out;
 
 	//The next pointer is NULL, this hasn't been attached to any other states yet
-	l->next = NULL;
+	list->next = NULL;
 
 	//Return the pointer
-	return l;
+	return list;
 }
 
 
@@ -311,8 +310,11 @@ void concatenate_states(arrow_list_t* out_list, state_t* start){
 	while(cursor != NULL){
 		//Patch the cursor's state to be start
 		cursor->state = start;
+
 		//Advance the cursor
 		cursor = cursor->next;
+
+		printf("Here\n");
 	}
 }
 
@@ -405,6 +407,9 @@ regex_t define_regular_expression(char* pattern){
 
 				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
 				concatenate_states(frag_1->arrows, frag_2->start);
+
+				//Push a new fragment up where the start of frag_1 points is the start
+				push(stack, create_fragment(frag_1->start, frag_2->arrows));
 
 				break;
 
