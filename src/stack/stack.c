@@ -104,7 +104,7 @@ void* peek(stack_t* stack){
 /**
  * Completely free all memory in the stack
  */
-void destroy_stack(stack_t* stack){
+void destroy_stack(stack_t* stack, enum stack_mode_t mode){
 	//Just in case...
 	if(stack == NULL){
 		printf("ERROR: Attempt to free a null pointer\n");
@@ -119,8 +119,15 @@ void destroy_stack(stack_t* stack){
 	while(cursor != NULL){
 		//Save the cursor
 		temp = cursor; 
+
+		//If we are in full cleanup mode, free the data too
+		if(mode == FULL_CLEANUP){
+			free(cursor->data);
+		}
+
 		//Advance the cursor
 		cursor = cursor->next;
+
 		//Free the node
 		free(temp);
 	}

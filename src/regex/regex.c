@@ -44,7 +44,9 @@ struct state_t {
  * states
  */
 struct arrow_list_t {
+	//The next arrow list struct
 	arrow_list_t* next;
+	//The state that we point to
 	state_t* state;
 };
 
@@ -207,7 +209,7 @@ static char* in_to_post(char* regex){
 				if(num_reg_char == 0){
 					printf("REGEX ERROR: Cannot use '|' without two valid operands.\n");
 					//Dealloc stack
-					destroy_stack(stack);
+					destroy_stack(stack, STATES_ONLY);
 					//Destroy buffer
 					free(buffer);
 					return NULL;
@@ -234,7 +236,7 @@ static char* in_to_post(char* regex){
 				if(num_reg_char == 0){
 					printf("REGEX ERROR: Cannot use operator %c without valid operands.\n", *cursor);
 					//Dealloc stack
-					destroy_stack(stack);
+					destroy_stack(stack, STATES_ONLY);
 					//Destroy buffer
 					free(buffer);
 					return NULL;
@@ -276,15 +278,15 @@ static char* in_to_post(char* regex){
 	}
 
 	//Destroy the stack we used here
-	destroy_stack(stack);
+	destroy_stack(stack, STATES_ONLY);
 	//Return the buffer
 	return postfix;
 }
 
 
 /**
- * Create a list containing a single arrow to "out" which is NULL. The state out is always uninitialized, which
- * means that we can actually reuse the pointer to it's pointer as an arrowlist as well
+ * Create a list containing a single arrow to out. This is what makes this a singleton list.
+ *
  */
 static arrow_list_t* singleton_list(state_t* out){
 	//Create a new arrow_list_t
@@ -512,7 +514,7 @@ regex_t define_regular_expression(char* pattern){
 
 		//Cleanup
 		free(postfix);
-		destroy_stack(stack);
+		destroy_stack(stack, STATES_ONLY);
 
 		//Return the regex in an error state
 		return regex;
@@ -531,7 +533,7 @@ regex_t define_regular_expression(char* pattern){
 
 	//Cleanup
 	free(postfix);
-	destroy_stack(stack);
+	destroy_stack(stack, STATES_ONLY);
 	return regex;
 }
 

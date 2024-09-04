@@ -31,6 +31,16 @@ typedef struct {
 
 
 /**
+ * An enum for how we want the stack to be cleaned up
+ * FULL_CLEANUP: free all of the void* pointers on the stack
+ * STATES_ONLY: all pointers are left alone. This may lead to memory leaks
+ */
+enum stack_mode_t {
+	FULL_CLEANUP,
+	STATES_ONLY
+};
+
+/**
  * Initialize a stack
  */
 stack_t* create_stack();
@@ -53,7 +63,8 @@ void* peek(stack_t* stack);
 
 /**
  * Destroy the stack with a proper cleanup
+ * FULL_CLEANUP: free all of the void* pointers on the stack
+ * STATES_ONLY: all pointers are left alone. This may lead to memory leaks
  */
-void destroy_stack(stack_t* stack);
-
+void destroy_stack(stack_t* stack, enum stack_mode_t mode);
 #endif
