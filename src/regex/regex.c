@@ -23,6 +23,7 @@
 typedef struct state_t state_t;
 typedef struct NFA_fragement_t NFA_fragement_t;
 typedef struct arrow_list_t arrow_list_t;
+typedef struct state_list_t state_list_t ;
 
 /**
  * A struct that defines an NFA state
@@ -62,6 +63,17 @@ struct NFA_fragement_t {
 	state_t* start;
 	//The linked list of all arrows or transitions out of the state
 	arrow_list_t* arrows;
+};
+
+
+/**
+ * A struct that defines a list of all states in the NFA, stored as an array. In this 
+ * struct, we also store the current index that we are on so that we don't have to store
+ * this somewhere else 
+ */
+struct state_list_t {
+	state_t** states;
+	int current_index;
 };
 
 
@@ -537,6 +549,10 @@ regex_t define_regular_expression(char* pattern){
 	return regex;
 }
 
+
+/**
+ *
+ */
 
 /**
  *
