@@ -20,7 +20,7 @@
 #define CONCATENATION '`'
 
 //For convenience
-typedef struct state_t state_t;
+typedef struct NFA_state_t NFA_state_t;
 typedef struct NFA_fragement_t NFA_fragement_t;
 typedef struct arrow_list_t arrow_list_t;
 typedef struct state_list_t state_list_t ;
@@ -31,12 +31,12 @@ typedef struct state_list_t state_list_t ;
  * If opt = SPLIT, we have two arrows
  * If opt = ACCEPTING, we have an accepting state
  */
-struct state_t {
+struct NFA_state_t {
 	u_int8_t opt;
 	//The default next 
-	state_t* next;
+	NFA_state_t* next;
 	//The optional second next for alternating states 
-	state_t* next_opt;
+	NFA_state_t* next_opt;
 };
 
 
@@ -48,7 +48,7 @@ struct arrow_list_t {
 	//The next arrow list struct
 	arrow_list_t* next;
 	//The state that we point to
-	state_t* state;
+	NFA_state_t* state;
 };
 
 
@@ -60,7 +60,7 @@ struct arrow_list_t {
  */
 struct NFA_fragement_t {
 	//The start state of the fragment
-	state_t* start;
+	NFA_state_t* start;
 	//The linked list of all arrows or transitions out of the state
 	arrow_list_t* arrows;
 };
@@ -71,8 +71,8 @@ struct NFA_fragement_t {
  * struct, we also store the current index that we are on so that we don't have to store
  * this somewhere else 
  */
-struct state_list_t {
-	state_t** states;
+struct NFA_state_list_t {
+	NFA_state_t** states;
 	int current_index;
 };
 
@@ -80,9 +80,9 @@ struct state_list_t {
 /**
  * Create and return a state
  */
-static state_t* create_state(u_int32_t opt, state_t* next, state_t* next_opt){
+static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt){
 	//Allocate a state
- 	state_t* state = (state_t*)malloc(sizeof(state_t));
+ 	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
 
 	//Assign these values
 	state->opt = opt;
@@ -97,7 +97,7 @@ static state_t* create_state(u_int32_t opt, state_t* next, state_t* next_opt){
 /**
  * Create and return a fragment
  */
-static NFA_fragement_t* create_fragment(state_t* start, arrow_list_t* arrows){
+static NFA_fragement_t* create_fragment(NFA_state_t* start, arrow_list_t* arrows){
 	//Allocate our fragment
 	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
 
@@ -324,7 +324,7 @@ static char* in_to_post(char* regex, regex_mode_t mode){
  * Create a list containing a single arrow to out. This is what makes this a singleton list.
  *
  */
-static arrow_list_t* singleton_list(state_t* out){
+static arrow_list_t* singleton_list(NFA_state_t* out){
 	//Create a new arrow_list_t
 	arrow_list_t* list = malloc(sizeof(arrow_list_t));
 
@@ -342,7 +342,7 @@ static arrow_list_t* singleton_list(state_t* out){
  * Path the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
  */
-void concatenate_states(arrow_list_t* out_list, state_t* start){
+void concatenate_states(arrow_list_t* out_list, NFA_state_t* start){
 	//A cursor so we don't affect the original pointer
 	arrow_list_t* cursor = out_list;
 
@@ -434,7 +434,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Declare these for use 
 	NFA_fragement_t* frag_2;
 	NFA_fragement_t* frag_1;
-	state_t* split;
+	NFA_state_t* split;
 
 	//Keep track of chars processed
 	u_int16_t num_processed = 0;
@@ -541,7 +541,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//One more processed
 				num_processed++;
 				//Create a new state with the charcter, and no attached states
-				state_t* s = create_state(ch, NULL, NULL);
+				NFA_state_t* s = create_state(ch, NULL, NULL);
 				//Create a fragment
 				NFA_fragement_t* fragment = create_fragment(s,  singleton_list(s->next));
 
@@ -573,7 +573,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	}
 
 	//Create the accepting state
-	state_t* accepting_state = create_state(ACCEPTING, NULL, NULL);
+	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL);
 
 	//Patch in the accepting state
 	concatenate_states(final->arrows, accepting_state);
