@@ -113,7 +113,7 @@ static NFA_fragement_t* create_fragment(state_t* start, arrow_list_t* arrows){
  * Convert a regular expression from infix to postfix notation. The character
  * '`' is used as the explicit concatentation operator
  */
-static char* in_to_post(char* regex){
+static char* in_to_post(char* regex, regex_mode_t mode){
 	//Allocate space with calloc so we don't have to worry about null termination
 	char* postfix = calloc(REGEX_LEN * 2, sizeof(char));
 	//Use buffer as our cursor
@@ -142,7 +142,11 @@ static char* in_to_post(char* regex){
 	for(char* cursor = regex; *cursor != '\0'; cursor++){
 		//Ensure that we actually have printable chars in here
 		if(*cursor < 33 || *cursor > 126){
-			printf("REGEX ERROR: Unprintable characters detected.\n");
+			//Display error if in verbose mode
+			if(mode == REGEX_VERBOSE){
+				printf("REGEX ERROR: Unprintable characters detected.\n");
+			}
+
 			return NULL;
 		}
 
@@ -152,7 +156,11 @@ static char* in_to_post(char* regex){
 			case '(':
 				//If we see more than 50 nested parenthesis, exit
 				if(p >= parens + 50){
-					printf("REGEX ERROR: Too many parenthesis in the regex");
+					//Display the error if we're in verbose mode
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX ERROR: Too many parenthesis in the regex");
+					}
+
 					return NULL;
 				}
 
@@ -182,13 +190,20 @@ static char* in_to_post(char* regex){
 			case ')':
 				//Make sure the parenthesis match
 				if(*((char*)pop(stack)) != '('){
-					printf("REGEX ERROR: Unmatched parenthesis detected.\n");
+					//Display the error if we're in verbose mode
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX ERROR: Unmatched parenthesis detected.\n");
+					}
+
 					return NULL;
 				}
 
 				//If this is 0, the user had empty parenthesis
 				if(num_reg_char == 0){
-					printf("REGEX ERROR: Empty parenthesis detected.\n");
+					//Display the error if requested
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX ERROR: Empty parenthesis detected.\n");
+					}
 					return NULL;
 				}
 
@@ -211,6 +226,7 @@ static char* in_to_post(char* regex){
 				num_reg_char = p->paren_reg;
 				num_pipes = p->paren_pipes;
 
+
 				//Undercounts for some reason
 				num_reg_char++;
 				break;
@@ -219,7 +235,11 @@ static char* in_to_post(char* regex){
 			case '|':
 				//If we haven't seen any of these, it's bad
 				if(num_reg_char == 0){
-					printf("REGEX ERROR: Cannot use '|' without two valid operands.\n");
+					//Display errors if requested
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX ERROR: Cannot use '|' without two valid operands.\n");
+					}
+
 					//Dealloc stack
 					destroy_stack(stack, STATES_ONLY);
 					//Destroy buffer
@@ -246,7 +266,11 @@ static char* in_to_post(char* regex){
 			case '?':
 				//If we've seen no real chars, then these are invalid
 				if(num_reg_char == 0){
-					printf("REGEX ERROR: Cannot use operator %c without valid operands.\n", *cursor);
+					//Display errors if requested
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX ERROR: Cannot use operator %c without valid operands.\n", *cursor);
+					}
+
 					//Dealloc stack
 					destroy_stack(stack, STATES_ONLY);
 					//Destroy buffer
@@ -360,7 +384,7 @@ arrow_list_t* concatenate_lists(arrow_list_t* list_1, arrow_list_t* list_2){
  * If anything goes wrong, a regex_t struct will be returned in a REGEX_ERR state. This regex
  * will then be useless by the match function
  */
-regex_t define_regular_expression(char* pattern){
+regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Stack allocate a regex
 	regex_t regex;
 	//Set to NULL as a flag
@@ -368,7 +392,11 @@ regex_t define_regular_expression(char* pattern){
 
 	//Just in case
 	if(pattern == NULL || strlen(pattern) == 0){
-		printf("REGEX ERROR: Pattern cannot be null or empty\n");
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Pattern cannot be null or empty\n");
+		}
+
 		//Set this flag so that the user knows
 		regex.state = REGEX_ERR;
 		return regex;
@@ -376,17 +404,25 @@ regex_t define_regular_expression(char* pattern){
 
 	//Set a hard limit. I don't see a situation where we'd need more than 150 characters for a regex
 	if(strlen(pattern) >= 150){
-		printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
+		}
+
 		regex.state = REGEX_ERR;
 		return regex;
 	}
 
 	//Convert to postfix before applying our algorithm
-	char* postfix = in_to_post(pattern);
+	char* postfix = in_to_post(pattern, mode);
 	
 	//If this didn't work, we will stop and return a bad regex
 	if(postfix == NULL){
-		printf("REGEX ERROR: Postfix conversion failed.\n");
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Postfix conversion failed.\n");
+		}
+
 		//Put in error state
 		regex.state = REGEX_ERR;
 		return regex;
@@ -520,7 +556,11 @@ regex_t define_regular_expression(char* pattern){
 
 	//If the stack isn't empty here, it's bad
 	if(peek(stack) != NULL){
-		printf("REGEX ERROR: Bad regular expression detected.\n");
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Bad regular expression detected.\n");
+		}
+
 		//Put in an error state
 		regex.state = REGEX_ERR;
 
@@ -554,30 +594,41 @@ regex_t define_regular_expression(char* pattern){
  *
  */
 
+
 /**
  *
  * A value of -1 means an invalid input was passed
  */
-regex_match_t regex_match(regex_t regex, char* string){
+regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 	regex_match_t match;
 
 	//If we are given a bad regex 
 	if(regex.state != REGEX_ERR){
-		printf("REGEX ERROR: Attempt to use an invalid regex.\n");
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Attempt to use an invalid regex.\n");
+		}
 
 		//Pack in the values and return
 		match.match = NULL;
-		match.match_status = -1;
+
+		//We return this value so that the caller can know what the error was
+		match.status = MATCH_INV_INPUT;
+
+		//Give the regex back
 		return match;
 	}
 
 	//If we are given a bad string
 	if(string == NULL || strlen(string) == 0){
-		printf("REGEX ERROR: Attempt to match a NULL string or a string of length 0.\n");
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Attempt to match a NULL string or a string of length 0.\n");
+		}
 
 		//Pack in the values and return
 		match.match = NULL;
-		match.match_status = -1;
+		match.status = MATCH_INV_INPUT;
 		return match;
 	}
 	
