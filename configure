@@ -1,0 +1,6 @@
+# Author: Jack Robbins
+# Configuration file for github actions
+
+if [[ ! -d ./out ]]; then
+  mkdir out
+fi
