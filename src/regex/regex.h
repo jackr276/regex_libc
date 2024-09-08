@@ -7,6 +7,7 @@
 #define REGEX_H
 
 #include <stdint.h>
+#include <sys/types.h>
 
 /**
  * The state that the regex is in. Used for an "errors as values" return approach
@@ -50,6 +51,8 @@ typedef struct {
 	void* DFA;
 	//The state that the regex is in
 	regex_state_t state;
+	//The nuber of states in the regex
+	u_int16_t num_states;
 
 } regex_t;
 

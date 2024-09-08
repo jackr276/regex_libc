@@ -24,6 +24,8 @@ typedef struct NFA_state_t NFA_state_t;
 typedef struct NFA_fragement_t NFA_fragement_t;
 typedef struct transition_list_t transition_list_t;
 typedef struct state_list_t state_list_t ;
+typedef struct NFA_state_list_t NFA_state_list_t;
+typedef struct DFA_state_t DFA_state_t;
 
 /**
  * A struct that defines an NFA state
@@ -68,19 +70,27 @@ struct NFA_fragement_t {
 
 /**
  * A struct that defines a list of all states in the NFA, stored as an array. In this 
- * struct, we also store the current index that we are on so that we don't have to store
- * this somewhere else 
+ * struct, we also store the length
  */
 struct NFA_state_list_t {
 	NFA_state_t** states;
-	int current_index;
+	u_int16_t length;
+};
+
+
+/**
+ * A state that we will use for our DFA caching scheme. It is well known that DFA's are more efficent
+ * than NFAs, so this will help us speed things up
+ */
+struct DFA_state_t {
+
 };
 
 
 /**
  * Create and return a state
  */
-static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt){
+static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt, u_int16_t* num_states){
 	//Allocate a state
  	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
 
@@ -88,6 +98,9 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
 	state->opt = opt;
 	state->next = next;
 	state->next_opt = next_opt;
+
+	//Increment the counter
+	(*num_states)++;
 
 	//Give the pointer back
 	return state;
@@ -472,7 +485,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment statrt states
-				split = create_state(SPLIT, frag_1->start,  frag_2->start);
+				split = create_state(SPLIT, frag_1->start,  frag_2->start, &(regex.num_states));
 
 				//Append the arrow lists of the two fragments so that the new state split has them both
 				transition_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
@@ -490,7 +503,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				frag_1 = pop(stack);
 
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
-				split = create_state(SPLIT, frag_1->start, NULL);
+				split = create_state(SPLIT, frag_1->start, NULL, &(regex.num_states));
 
 				//Make the arrows in the old fragment point back to the start of the state
 				concatenate_states(frag_1->arrows, split);
@@ -509,7 +522,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 0 or 1
-				split = create_state(SPLIT, frag_1->start, NULL);
+				split = create_state(SPLIT, frag_1->start, NULL, &regex.num_states);
 
 				//Set the most recent fragment to point to this new state so that it's connected
 				concatenate_states(frag_1->arrows, split);
@@ -528,7 +541,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
 				//state. This allows for a "zero or one" function
-				split = create_state(SPLIT, frag_1->start, NULL);
+				split = create_state(SPLIT, frag_1->start, NULL, &regex.num_states);
 
 				//Note how for this one, we won't concatenate states at all
 
@@ -541,7 +554,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//One more processed
 				num_processed++;
 				//Create a new state with the charcter, and no attached states
-				NFA_state_t* s = create_state(ch, NULL, NULL);
+				NFA_state_t* s = create_state(ch, NULL, NULL, &(regex.num_states));
 				//Create a fragment
 				NFA_fragement_t* fragment = create_fragment(s,  init_list(s->next));
 
@@ -573,7 +586,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	}
 
 	//Create the accepting state
-	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL);
+	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, &regex.num_states);
 
 	//Patch in the accepting state
 	concatenate_states(final->arrows, accepting_state);
@@ -591,8 +604,18 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 
 /**
- *
+ * Create and initialize a new state list, adding start to the start of the state
  */
+void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_t num_states){
+	//Allocate list space
+	list->states = (NFA_state_t**)calloc(num_states, sizeof(NFA_state_t*));
+
+	//Currently there's nothing, so we'll set this to 0
+	list->length = 0;
+
+	//TODO add start to list in separate function
+
+}
 
 
 /**
