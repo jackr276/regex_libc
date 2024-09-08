@@ -1,6 +1,7 @@
 /**
  * Author: Jack Robbins
- * An API for a stack implementation
+ * An API for a heap allocated stack implementation. Fully integrated for all stack
+ * operations like push, pop and peek, and provides cleanup support as well
  */
 
 #ifndef STACK_H
@@ -67,4 +68,5 @@ void* peek(stack_t* stack);
  * STATES_ONLY: all pointers are left alone. This may lead to memory leaks
  */
 void destroy_stack(stack_t* stack, enum stack_mode_t mode);
+
 #endif

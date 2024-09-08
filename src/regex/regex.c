@@ -87,7 +87,7 @@ static state_t* create_state(u_int32_t opt, state_t* next, state_t* next_opt){
 	//Assign these values
 	state->opt = opt;
 	state->next = next;
-	state->next_opt = next;
+	state->next_opt = next_opt;
 
 	//Give the pointer back
 	return state;
@@ -596,11 +596,12 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 
 /**
- *
- * A value of -1 means an invalid input was passed
+ * Error handling: 
  */
 regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 	regex_match_t match;
+	//Error mode by default
+	match.status = MATCH_ERR;
 
 	//If we are given a bad regex 
 	if(regex.state != REGEX_ERR){
