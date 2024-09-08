@@ -22,7 +22,7 @@
 //For convenience
 typedef struct NFA_state_t NFA_state_t;
 typedef struct NFA_fragement_t NFA_fragement_t;
-typedef struct arrow_list_t arrow_list_t;
+typedef struct transition_list_t transition_list_t;
 typedef struct state_list_t state_list_t ;
 
 /**
@@ -41,12 +41,12 @@ struct NFA_state_t {
 
 
 /**
- * Define a list of the arrows or transitions between
+ * Define a list of the transitions between
  * states
  */
-struct arrow_list_t {
+struct transition_list_t {
 	//The next arrow list struct
-	arrow_list_t* next;
+	transition_list_t* next;
 	//The state that we point to
 	NFA_state_t* state;
 };
@@ -62,7 +62,7 @@ struct NFA_fragement_t {
 	//The start state of the fragment
 	NFA_state_t* start;
 	//The linked list of all arrows or transitions out of the state
-	arrow_list_t* arrows;
+	transition_list_t* arrows;
 };
 
 
@@ -95,9 +95,10 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
 
 
 /**
- * Create and return a fragment
+ * Create and return a fragment. A fragment is a partially built NFA. Our system works by building
+ * consecutive fragments on top of previous fragments
  */
-static NFA_fragement_t* create_fragment(NFA_state_t* start, arrow_list_t* arrows){
+static NFA_fragement_t* create_fragment(NFA_state_t* start, transition_list_t* arrows){
 	//Allocate our fragment
 	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
 
@@ -321,12 +322,11 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 
 
 /**
- * Create a list containing a single arrow to out. This is what makes this a singleton list.
- *
+ * Create a list containing a single arrow to out. This is what makes this a starting list.
  */
-static arrow_list_t* singleton_list(NFA_state_t* out){
+static transition_list_t* init_list(NFA_state_t* out){
 	//Create a new arrow_list_t
-	arrow_list_t* list = malloc(sizeof(arrow_list_t));
+	transition_list_t* list = malloc(sizeof(transition_list_t));
 
 	//Assign the state pointer
 	list->state = out;
@@ -342,9 +342,9 @@ static arrow_list_t* singleton_list(NFA_state_t* out){
  * Path the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
  */
-void concatenate_states(arrow_list_t* out_list, NFA_state_t* start){
+void concatenate_states(transition_list_t* out_list, NFA_state_t* start){
 	//A cursor so we don't affect the original pointer
-	arrow_list_t* cursor = out_list;
+	transition_list_t* cursor = out_list;
 
 	//Go over the entire outlist
 	while(cursor != NULL){
@@ -361,9 +361,9 @@ void concatenate_states(arrow_list_t* out_list, NFA_state_t* start){
  * Connect the two linked lists of list_1 and list_2 to be one big linked list
  * with list_1 as the head
  */
-arrow_list_t* concatenate_lists(arrow_list_t* list_1, arrow_list_t* list_2){
+transition_list_t* concatenate_lists(transition_list_t* list_1, transition_list_t* list_2){
 	//A cursor for traversal
-	arrow_list_t* cursor = list_1;
+	transition_list_t* cursor = list_1;
 
 	//Find the tail of list 1
 	while(cursor->next != NULL){
@@ -475,7 +475,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				split = create_state(SPLIT, frag_1->start,  frag_2->start);
 
 				//Append the arrow lists of the two fragments so that the new state split has them both
-				arrow_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
+				transition_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
 
 				//Push the newly made state and its transition list onto the stack
 				push(stack, create_fragment(split,  combined));
@@ -496,7 +496,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				concatenate_states(frag_1->arrows, split);
 
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
-				push(stack, create_fragment(split, singleton_list(split->next)));
+				push(stack, create_fragment(split, init_list(split->next)));
 
 				break;
 
@@ -515,7 +515,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				concatenate_states(frag_1->arrows, split);
 
 				//Create a new fragment that represent this whole structure and push to the stack
-				push(stack, create_fragment(frag_1->start, singleton_list(split->next)));
+				push(stack, create_fragment(frag_1->start, init_list(split->next)));
 			
 				break;
 
@@ -533,7 +533,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//Note how for this one, we won't concatenate states at all
 
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
-				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, singleton_list(split->next))));
+				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, init_list(split->next))));
 				break;
 
 			//Any character that is not one of the special characters
@@ -543,7 +543,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//Create a new state with the charcter, and no attached states
 				NFA_state_t* s = create_state(ch, NULL, NULL);
 				//Create a fragment
-				NFA_fragement_t* fragment = create_fragment(s,  singleton_list(s->next));
+				NFA_fragement_t* fragment = create_fragment(s,  init_list(s->next));
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack,  fragment);
