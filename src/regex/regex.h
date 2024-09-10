@@ -47,8 +47,8 @@ typedef enum {
 typedef struct {
 	//The regex we wish to match with
 	char* regex;
-	//The pointer to the DFA, the user should never touch this
-	void* DFA;
+	//The pointer to the NFA, the user should never touch this
+	void* NFA;
 	//The state that the regex is in
 	regex_state_t state;
 	//The nuber of states in the regex

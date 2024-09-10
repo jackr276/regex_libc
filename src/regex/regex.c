@@ -29,7 +29,7 @@ typedef struct DFA_state_t DFA_state_t;
 
 /**
  * A struct that defines an NFA state
- * If opt < 256, we have a labeled arrow stored in out
+ * If opt < 128, we have a labeled arrow stored in out
  * If opt = SPLIT, we have two arrows
  * If opt = ACCEPTING, we have an accepting state
  */
@@ -85,7 +85,9 @@ struct NFA_state_list_t {
 struct DFA_state_t {
 	//The list of the NFA states that make up the DFA state
 	NFA_state_list_t nfa_state_list;
-	DFA_state_t* list[256];
+	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
+	//chars range from 0-127
+	DFA_state_t* list[128];
 	DFA_state_t* left;
 	DFA_state_t* right;
 
@@ -406,7 +408,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Stack allocate a regex
 	regex_t regex;
 	//Set to NULL as a flag
-	regex.DFA = NULL;
+	regex.NFA = NULL;
 
 	//Just in case
 	if(pattern == NULL || strlen(pattern) == 0){
@@ -596,8 +598,8 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Patch in the accepting state
 	concatenate_states(final->arrows, accepting_state);
 
-	//This fragment should be the whole DFA, so it's start state should be the start state that we need
-	regex.DFA = final->start;
+	//This fragment should be the whole NFA, so it's start state should be the start state that we need
+	regex.NFA = final->start;
 	regex.regex = pattern;
 	regex.state = REGEX_VALID;
 
@@ -651,7 +653,9 @@ static void convert_to_DFA_state(NFA_state_list_t* list, NFA_state_t* start){
 
 
 /**
- * Create and initialize a new state list, adding start to the start of the state
+ * Initialize a DFA state list by reading all of the transitions of states reachable directly from "start". This new
+ * list will be stored in "list". "num_states" is the number of DFA states, which should in theory be the maximum number of 
+ * states we could possibly have in one of our DFA state lists
  */
 static void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_t num_states){
 	//Allocate list space
@@ -662,6 +666,39 @@ static void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_
 
 	//Begin our conversion by converting the start state given here into a DFA state
 	convert_to_DFA_state(list, start);
+}
+
+
+
+static DFA_state_t* initialize_DFA(NFA_state_t* NFA_start, NFA_state_list_t* list){
+	return NULL;
+
+}
+
+static DFA_state_t* create_DFA_state(NFA_state_list_t* list){
+
+	return NULL;
+}
+
+
+/**
+ * Advance the current NFA state to the next NFA state given character 
+ */
+static void next_state_NFA(NFA_state_list_t* current_list, NFA_state_list_t* next_list, char ch){
+
+}
+
+
+/**
+ * Use the current DFA_state and the character read from the string to advance to the next 
+ * state, specifically for our DFA
+ */
+static DFA_state_t* next_state_DFA(DFA_state_t* current_state, NFA_state_list_t* list, char c){
+	//Get the next state in the NFA given character c
+	next_state_NFA(&(current_state->nfa_state_list), list, c);
+
+	current_state->list[c] = create_DFA_state(list);
+	return current_state->list[c];
 }
 
 
@@ -704,6 +741,22 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 		match.status = MATCH_INV_INPUT;
 		return match;
 	}
-	
+
+	//Declare and inititialize 2 NFA state lists for our uses here
+	NFA_state_list_t list_1;
+	NFA_state_list_t list_2;
+
+	//Allocate space for our lists TODO may not need list 2
+	list_1.states = (NFA_state_t**)malloc(sizeof(NFA_state_t*));
+	list_2.states = (NFA_state_t**)malloc(sizeof(NFA_state_t*));
+
+	//Start the DFA with the initializer function
+	DFA_state_t* DFA_start = initialize_DFA(regex.NFA, &list_1);
+
+	//Cleanup after ourselves
+	free(list_1.states);
+	free(list_2.states);
+
+	//Return the match struct
 	return match;
 }
