@@ -61,8 +61,10 @@ typedef struct {
  * A return type struct that allows for value packing by regex_match()
  */
 typedef struct {
-	//The pointer to the first match instance
-	char* match;
+	//The pointer to the first match index
+	u_int8_t match_start;
+	//The pointer to the end of the match
+	u_int8_t match_end;
 	//The match status
 	match_status_t status;
 

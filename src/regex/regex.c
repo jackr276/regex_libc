@@ -69,8 +69,8 @@ struct NFA_fragement_t {
 
 
 /**
- * A struct that defines a list of all states in the NFA, stored as an array. In this 
- * struct, we also store the length
+ * When converting from an NFA to a DFA, we represent each DFA state as a list of reachable
+ * NFA states. This struct will be used for this purpose
  */
 struct NFA_state_list_t {
 	NFA_state_t** states;
@@ -83,6 +83,11 @@ struct NFA_state_list_t {
  * than NFAs, so this will help us speed things up
  */
 struct DFA_state_t {
+	//The list of the NFA states that make up the DFA state
+	NFA_state_list_t nfa_state_list;
+	DFA_state_t* list[256];
+	DFA_state_t* left;
+	DFA_state_t* right;
 
 };
 
@@ -355,7 +360,7 @@ static transition_list_t* init_list(NFA_state_t* out){
  * Path the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
  */
-void concatenate_states(transition_list_t* out_list, NFA_state_t* start){
+static void concatenate_states(transition_list_t* out_list, NFA_state_t* start){
 	//A cursor so we don't affect the original pointer
 	transition_list_t* cursor = out_list;
 
@@ -374,7 +379,7 @@ void concatenate_states(transition_list_t* out_list, NFA_state_t* start){
  * Connect the two linked lists of list_1 and list_2 to be one big linked list
  * with list_1 as the head
  */
-transition_list_t* concatenate_lists(transition_list_t* list_1, transition_list_t* list_2){
+static transition_list_t* concatenate_lists(transition_list_t* list_1, transition_list_t* list_2){
 	//A cursor for traversal
 	transition_list_t* cursor = list_1;
 
@@ -603,10 +608,48 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 }
 
 
+static u_int8_t contains_accepting_state(NFA_state_list_t* l){
+	//Search the array for an accepting state
+	for(u_int16_t i = 0; i < l->length; i++){
+		//If we find one, return true
+		if(l->states[i]->opt == ACCEPTING){
+			return 1;
+		}
+	}
+
+	//If we get here, this list doesn't have one, so return false
+	return 0;
+}
+
+
+/**
+ * Follow all of the arrows that we have and recursively build a DFA state that is itself
+ * a list of all the reachable NFA states
+ */
+static void convert_to_DFA_state(NFA_state_list_t* list, NFA_state_t* start){
+	//Base case
+	if(start == NULL || list == NULL){
+		return;
+	}
+
+	//We have a split, so follow the split recursively
+	if(start->opt == SPLIT){
+		//Recursively add these 2 branches as well. This is how we convert from an NFA into a DFA
+		convert_to_DFA_state(list, start->next);
+		convert_to_DFA_state(list, start->next_opt);
+	}
+
+	//Add this state to the list of NFA states
+	list->states[list->length] = start;
+	//Increment the length
+	list->length++;
+}
+
+
 /**
  * Create and initialize a new state list, adding start to the start of the state
  */
-void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_t num_states){
+static void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_t num_states){
 	//Allocate list space
 	list->states = (NFA_state_t**)calloc(num_states, sizeof(NFA_state_t*));
 
@@ -634,7 +677,8 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 		}
 
 		//Pack in the values and return
-		match.match = NULL;
+		match.match_start = 0;
+		match.match_end = 0;
 
 		//We return this value so that the caller can know what the error was
 		match.status = MATCH_INV_INPUT;
@@ -651,7 +695,8 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 		}
 
 		//Pack in the values and return
-		match.match = NULL;
+		match.match_start = 0;
+		match.match_end = 0;
 		match.status = MATCH_INV_INPUT;
 		return match;
 	}
