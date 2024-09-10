@@ -421,7 +421,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	}
 
 	//Set a hard limit. I don't see a situation where we'd need more than 150 characters for a regex
-	if(strlen(pattern) >= 150){
+	if(strlen(pattern) >= REGEX_LEN){
 		//Verbose mode
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
@@ -608,6 +608,10 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 }
 
 
+/**
+ * Search the list to determine if the accepting state is in here. If the state is in here, that means
+ * that it is reachable, and as such we have a match
+ */
 static u_int8_t contains_accepting_state(NFA_state_list_t* l){
 	//Search the array for an accepting state
 	for(u_int16_t i = 0; i < l->length; i++){
@@ -656,8 +660,8 @@ static void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_
 	//Currently there's nothing, so we'll set this to 0
 	list->length = 0;
 
-	//TODO add start to list in separate function
-
+	//Begin our conversion by converting the start state given here into a DFA state
+	convert_to_DFA_state(list, start);
 }
 
 
