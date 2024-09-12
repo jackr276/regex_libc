@@ -274,6 +274,7 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 					*buffer = CONCATENATION;
 					//Move up the cursor
 					buffer++;
+					//Decrement regular chars seen
 					num_reg_char--;
 				}
 
@@ -321,6 +322,9 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 				break;
 		}
 	}
+
+	//We end up with one extra regular char here(overcounting?) so fix this way
+	num_reg_char--;
 
 	//Add in any remaining needed concat operators
 	for(; num_reg_char > 1; num_reg_char--){
@@ -435,6 +439,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 	//Convert to postfix before applying our algorithm
 	char* postfix = in_to_post(pattern, mode);
+
 	
 	//If this didn't work, we will stop and return a bad regex
 	if(postfix == NULL){
@@ -446,6 +451,11 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		//Put in error state
 		regex.state = REGEX_ERR;
 		return regex;
+	}
+
+	//Show postfix if it exists
+	if(mode == REGEX_VERBOSE){
+		printf("Postfix conversion: %s\n", postfix);
 	}
 
 	//Create a stack for pushing/popping
@@ -481,6 +491,10 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//Push a new fragment up where the start of frag_1 points is the start
 				push(stack, create_fragment(frag_1->start, frag_2->arrows));
 
+				//We're done with these now, so we should free them
+				free(frag_1);
+				free(frag_2);
+
 				break;
 
 			//Alternate state
@@ -489,6 +503,18 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//Grab the two most recent fragments off of the stack
 				frag_2 = (NFA_fragement_t*)pop(stack);
 				frag_1 = (NFA_fragement_t*)pop(stack);
+
+				//Check to make sure we actually have stuff to work with here
+				if(frag_1 == NULL || frag_2 == NULL){
+					//Print out if in verbose mode
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX_ERR: Alternate operator(|) was passed with 0 or 1 input.\n");
+					}
+	
+					//Put in error state
+					regex.state = REGEX_ERR;
+					return regex;
+				}
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment statrt states

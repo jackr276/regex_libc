@@ -9,7 +9,7 @@
 
 int main(){
 
-	regex_t tester = define_regular_expression("a(bb)+a", REGEX_VERBOSE);
+	regex_t tester = define_regular_expression("abba|baab", REGEX_VERBOSE);
 
 	destroy_regex(tester);
 	
