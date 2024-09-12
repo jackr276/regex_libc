@@ -8,5 +8,10 @@
 #include "stack/stack.h"
 
 int main(){
-	define_regular_expression("a(bb)+a", REGEX_VERBOSE);
+
+	regex_t tester = define_regular_expression("a(bb)+a", REGEX_VERBOSE);
+
+	destroy_regex(tester);
+	
+
 }

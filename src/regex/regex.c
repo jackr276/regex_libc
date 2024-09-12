@@ -696,10 +696,6 @@ static void next_state_NFA(NFA_state_list_t* current_list, NFA_state_list_t* nex
 
 }
 
-static void next_state_DFA(){
-
-}
-
 
 /**
  * Use the current DFA_state and the character read from the string to advance to the next 
@@ -774,4 +770,29 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 
 	//Return the match struct
 	return match;
+}
+
+
+/**
+ * Recursively free all NFA states in that are pointed to. We should have no dangling states, so 
+ * in theory, this should work
+ */
+static void free_NFA_state(NFA_state_t* state){
+	//Base case
+	if(state == NULL){
+		return;
+	}
+
+	//Recursively call free on the next states here
+	free_NFA_state(state->next);
+	free_NFA_state(state->next_opt);
+
+	//Free the pointer to this state
+	free(state);
+}
+
+
+void destroy_regex(regex_t regex){
+	//Call the recursive NFA freeing function
+	free_NFA_state(regex.NFA);
 }

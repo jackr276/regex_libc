@@ -49,6 +49,8 @@ typedef struct {
 	char* regex;
 	//The pointer to the NFA, the user should never touch this
 	void* NFA;
+	//The pointer to the DFA, the user should also never touch this
+	void* DFA;
 	//The state that the regex is in
 	regex_state_t state;
 	//The nuber of states in the regex
@@ -83,5 +85,11 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode);
  * Returns 0 if no match, 1 if a match
  */
 regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode);
+
+
+/**
+ * Deallocate all memory and destroy the regex passed in
+ */
+void destroy_regex(regex_t regex);
 
 #endif
