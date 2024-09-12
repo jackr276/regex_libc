@@ -87,7 +87,7 @@ struct DFA_state_t {
 	NFA_state_list_t nfa_state_list;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
-	DFA_state_t* list[128];
+	DFA_state_t* transitions[128];
 	DFA_state_t* left;
 	DFA_state_t* right;
 
@@ -675,7 +675,15 @@ static DFA_state_t* initialize_DFA(NFA_state_t* NFA_start, NFA_state_list_t* lis
 
 }
 
+
+/**
+ * A constructor that returns a DFA state whose "internals" are the list of NFA states
+ * that are reachable at this state. This DFA state is dynamically allocated, and as such will need
+ * to be destroyed at some point TODO
+ */
 static DFA_state_t* create_DFA_state(NFA_state_list_t* list){
+
+
 
 	return NULL;
 }
@@ -688,6 +696,10 @@ static void next_state_NFA(NFA_state_list_t* current_list, NFA_state_list_t* nex
 
 }
 
+static void next_state_DFA(){
+
+}
+
 
 /**
  * Use the current DFA_state and the character read from the string to advance to the next 
@@ -697,8 +709,11 @@ static DFA_state_t* next_state_DFA(DFA_state_t* current_state, NFA_state_list_t*
 	//Get the next state in the NFA given character c
 	next_state_NFA(&(current_state->nfa_state_list), list, c);
 
-	current_state->list[c] = create_DFA_state(list);
-	return current_state->list[c];
+	//We use the char c as the index for the next state transition
+	current_state->transitions[c] = create_DFA_state(list);
+
+	//Return a pointer to the next state that comes about by transitioning on c
+	return current_state->transitions[c];
 }
 
 
