@@ -421,8 +421,201 @@ static void destroy_transition_list(transition_list_t* list){
 }
 
 
+static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
+	//Create a stack for pushing/popping
+	stack_t* stack = create_stack();
+
+	//Declare these for use 
+	NFA_fragement_t* frag_2;
+	NFA_fragement_t* frag_1;
+	NFA_state_t* split;
+
+	//Keep track of chars processed
+	u_int16_t num_processed = 0;
+
+	//Iterate until we hit the null terminator
+	for(char* cursor = postfix; *cursor != '\0'; cursor++){
+		//Grab the current char
+		char ch = *cursor;
+
+		//Switch on the character
+		switch(ch){
+			//Concatenation character
+			case '`':
+				//Found one more
+				num_processed++;
+				
+				//Pop the 2 most recent literals off of the stack
+				frag_2 = (NFA_fragement_t*)pop(stack);
+			    frag_1 = (NFA_fragement_t*)pop(stack);
+
+				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
+				concatenate_states(frag_1->arrows, frag_2->start);
+
+				//Push a new fragment up where the start of frag_1 points is the start
+				push(stack, create_fragment(frag_1->start, frag_2->arrows));
+
+				//We're done with these now, so we should free them
+				free(frag_1);
+				free(frag_2);
+
+				break;
+
+			//Alternate state
+			case '|':
+				num_processed++;
+				//Grab the two most recent fragments off of the stack
+				frag_2 = (NFA_fragement_t*)pop(stack);
+				frag_1 = (NFA_fragement_t*)pop(stack);
+
+				//Check to make sure we actually have stuff to work with here
+				if(frag_1 == NULL || frag_2 == NULL){
+					//Print out if in verbose mode
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX_ERR: Alternate operator(|) was passed with 0 or 1 input.\n");
+					}
+	
+					//Return as a warning
+					return NULL;
+				}
+
+				//Create a new special "split" state that acts as a fork in the road between the two
+				//fragment statrt states
+				split = create_state(SPLIT, frag_1->start,  frag_2->start, num_states);
+
+				//Append the arrow lists of the two fragments so that the new state split has them both
+				transition_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
+
+				//Push the newly made state and its transition list onto the stack
+				push(stack, create_fragment(split,  combined));
+
+				//Free these pointers as they are no longer needed
+				free(frag_1);
+				free(frag_2);
+
+				break;
+
+			//0 or more, more specifically the kleene star
+			case '*':
+				num_processed++;
+
+				//Pop the most recent fragment
+				frag_1 = pop(stack);
+
+				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
+				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+
+				//Make the arrows in the old fragment point back to the start of the state
+				concatenate_states(frag_1->arrows, split);
+
+				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
+				push(stack, create_fragment(split, init_list(split->next)));
+
+				//Free this pointer as it is no longer needed
+				free(frag_1);
+
+				break;
+
+			//1 or more, more specifically positive closure
+			case '+':
+				num_processed++;
+
+				//Grab the most recent fragment
+				frag_1 = pop(stack);
+
+				//We'll create a new state that acts as a split, going back to the the original state
+				//This acts as our optional 0 or 1
+				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+
+				//Set the most recent fragment to point to this new state so that it's connected
+				concatenate_states(frag_1->arrows, split);
+
+				//Create a new fragment that represent this whole structure and push to the stack
+				push(stack, create_fragment(frag_1->start, init_list(split->next)));
+			
+				//Free this pointer
+				free(frag_1);
+
+				break;
+
+			//0 or 1
+			case '?':
+				num_processed++;
+
+				//Grab the most recent fragment
+				frag_1 = pop(stack);
+
+				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
+				//state. This allows for a "zero or one" function
+				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+
+				//Note how for this one, we won't concatenate states at all
+
+				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
+				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, init_list(split->next))));
+
+				//Free this pointer
+				free(frag_1);
+
+				break;
+
+			//Any character that is not one of the special characters
+			default:
+				//One more processed
+				num_processed++;
+				//Create a new state with the charcter, and no attached states
+				NFA_state_t* s = create_state(ch, NULL, NULL, num_states);
+				//Create a fragment
+				NFA_fragement_t* fragment = create_fragment(s,  init_list(s->next));
+
+				//Push the fragment onto the stack. We will pop it off when we reach operators
+				push(stack,  fragment);
+				break;
+		}
+	}
+
+	//Grab the last fragment off of the stack
+	NFA_fragement_t* final = (NFA_fragement_t*)pop(stack);
+
+	//If the stack isn't empty here, it's bad
+	if(peek(stack) != NULL){
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Bad regular expression detected.\n");
+		}
+
+		//Cleanup
+		destroy_stack(stack, STATES_ONLY);
+
+		//Return the regex in an error state
+		return NULL;
+	}
+
+	//Create the accepting state
+	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, num_states);
+
+	//Patch in the accepting state
+	concatenate_states(final->arrows, accepting_state);
+
+	/* cleanup */
+	//We no longer need the final fragment
+	destroy_transition_list(final->arrows);
+
+	//Save this before we free final
+	NFA_state_t* starting_state = final->start;
+	//Free final
+	free(final);
+
+	//Free the postfix string
+	destroy_stack(stack, STATES_ONLY);
+
+	//Return a pointer to the final fragments starting state, as this fragment is the NFA
+	return starting_state;
+}
+
+
 /**
- * Build an NFA for a regular expression defined by the pattern
+ * Build an NFA and then DFA for a regular expression defined by the pattern
  * passed in.
  *
  * If anything goes wrong, a regex_t struct will be returned in a REGEX_ERR state. This regex
@@ -478,199 +671,27 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		printf("Postfix conversion: %s\n", postfix);
 	}
 
-	//Create a stack for pushing/popping
-	stack_t* stack = create_stack();
+	//Initially 0
+	regex.num_states = 0;
 
-	//Declare these for use 
-	NFA_fragement_t* frag_2;
-	NFA_fragement_t* frag_1;
-	NFA_state_t* split;
+	//Create the NFA first
+	regex.NFA = create_NFA(postfix, mode, &(regex.num_states));
 
-	//Keep track of chars processed
-	u_int16_t num_processed = 0;
-
-	//Iterate until we hit the null terminator
-	for(char* cursor = postfix; *cursor != '\0'; cursor++){
-		//Grab the current char
-		char ch = *cursor;
-
-		//Switch on the character
-		switch(ch){
-			//Concatenation character
-			case '`':
-				//Found one more
-				num_processed++;
-				
-				//Pop the 2 most recent literals off of the stack
-				frag_2 = (NFA_fragement_t*)pop(stack);
-			    frag_1 = (NFA_fragement_t*)pop(stack);
-
-				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
-				concatenate_states(frag_1->arrows, frag_2->start);
-
-				//Push a new fragment up where the start of frag_1 points is the start
-				push(stack, create_fragment(frag_1->start, frag_2->arrows));
-
-				//We're done with these now, so we should free them
-				free(frag_1);
-				free(frag_2);
-
-				break;
-
-			//Alternate state
-			case '|':
-				num_processed++;
-				//Grab the two most recent fragments off of the stack
-				frag_2 = (NFA_fragement_t*)pop(stack);
-				frag_1 = (NFA_fragement_t*)pop(stack);
-
-				//Check to make sure we actually have stuff to work with here
-				if(frag_1 == NULL || frag_2 == NULL){
-					//Print out if in verbose mode
-					if(mode == REGEX_VERBOSE){
-						printf("REGEX_ERR: Alternate operator(|) was passed with 0 or 1 input.\n");
-					}
-	
-					//Put in error state
-					regex.state = REGEX_ERR;
-					return regex;
-				}
-
-				//Create a new special "split" state that acts as a fork in the road between the two
-				//fragment statrt states
-				split = create_state(SPLIT, frag_1->start,  frag_2->start, &(regex.num_states));
-
-				//Append the arrow lists of the two fragments so that the new state split has them both
-				transition_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
-
-				//Push the newly made state and its transition list onto the stack
-				push(stack, create_fragment(split,  combined));
-
-				//Free these pointers as they are no longer needed
-				free(frag_1);
-				free(frag_2);
-
-				break;
-
-			//0 or more, more specifically the kleene star
-			case '*':
-				num_processed++;
-
-				//Pop the most recent fragment
-				frag_1 = pop(stack);
-
-				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
-				split = create_state(SPLIT, frag_1->start, NULL, &(regex.num_states));
-
-				//Make the arrows in the old fragment point back to the start of the state
-				concatenate_states(frag_1->arrows, split);
-
-				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
-				push(stack, create_fragment(split, init_list(split->next)));
-
-				//Free this pointer as it is no longer needed
-				free(frag_1);
-
-				break;
-
-			//1 or more, more specifically positive closure
-			case '+':
-				num_processed++;
-
-				//Grab the most recent fragment
-				frag_1 = pop(stack);
-
-				//We'll create a new state that acts as a split, going back to the the original state
-				//This acts as our optional 0 or 1
-				split = create_state(SPLIT, frag_1->start, NULL, &regex.num_states);
-
-				//Set the most recent fragment to point to this new state so that it's connected
-				concatenate_states(frag_1->arrows, split);
-
-				//Create a new fragment that represent this whole structure and push to the stack
-				push(stack, create_fragment(frag_1->start, init_list(split->next)));
-			
-				//Free this pointer
-				free(frag_1);
-
-				break;
-
-			//0 or 1
-			case '?':
-				num_processed++;
-
-				//Grab the most recent fragment
-				frag_1 = pop(stack);
-
-				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
-				//state. This allows for a "zero or one" function
-				split = create_state(SPLIT, frag_1->start, NULL, &regex.num_states);
-
-				//Note how for this one, we won't concatenate states at all
-
-				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
-				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, init_list(split->next))));
-
-				//Free this pointer
-				free(frag_1);
-
-				break;
-
-			//Any character that is not one of the special characters
-			default:
-				//One more processed
-				num_processed++;
-				//Create a new state with the charcter, and no attached states
-				NFA_state_t* s = create_state(ch, NULL, NULL, &(regex.num_states));
-				//Create a fragment
-				NFA_fragement_t* fragment = create_fragment(s,  init_list(s->next));
-
-				//Push the fragment onto the stack. We will pop it off when we reach operators
-				push(stack,  fragment);
-				break;
-		}
-	}
-
-	//Grab the last fragment off of the stack
-	NFA_fragement_t* final = (NFA_fragement_t*)pop(stack);
-
-	//If the stack isn't empty here, it's bad
-	if(peek(stack) != NULL){
-		//Verbose mode
+	//If this is bad, we'll bail out here
+	if(regex.NFA == NULL){
 		if(mode == REGEX_VERBOSE){
-			printf("REGEX ERROR: Bad regular expression detected.\n");
+			printf("REGEX ERROR: NFA creation failed.\n");
+			//Put in an error state
+			regex.state = REGEX_ERR;
+			
+			//Ensure there is no leakage
+			free(postfix);
+
+			return regex;
 		}
-
-		//Put in an error state
-		regex.state = REGEX_ERR;
-
-		//Cleanup
-		free(postfix);
-		destroy_stack(stack, STATES_ONLY);
-
-		//Return the regex in an error state
-		return regex;
 	}
 
-	//Create the accepting state
-	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, &regex.num_states);
 
-	//Patch in the accepting state
-	concatenate_states(final->arrows, accepting_state);
-
-	//This fragment should be the whole NFA, so it's start state should be the start state that we need
-	regex.NFA = final->start;
-	regex.regex = pattern;
-	regex.state = REGEX_VALID;
-
-	/* cleanup */
-	//We no longer need the final fragment
-	destroy_transition_list(final->arrows);
-	free(final);
-
-	//Free the postfix string
-	free(postfix);
-	destroy_stack(stack, STATES_ONLY);
 	return regex;
 }
 
