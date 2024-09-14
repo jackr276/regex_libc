@@ -663,9 +663,13 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	regex.regex = pattern;
 	regex.state = REGEX_VALID;
 
-	//Cleanup
-	free(postfix);
+	/* cleanup */
+	//We no longer need the final fragment
 	destroy_transition_list(final->arrows);
+	free(final);
+
+	//Free the postfix string
+	free(postfix);
 	destroy_stack(stack, STATES_ONLY);
 	return regex;
 }
@@ -853,6 +857,9 @@ static void free_NFA_state(NFA_state_t* state){
 }
 
 
+/**
+ * Comprehensive cleanup function that cleans up everything related to the regex
+ */
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
 	free_NFA_state(regex.NFA);
