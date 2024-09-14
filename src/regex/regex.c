@@ -87,7 +87,7 @@ struct DFA_state_t {
 	NFA_state_list_t nfa_state_list;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
-	DFA_state_t* transitions[128];
+	DFA_state_t** transitions;
 	DFA_state_t* left;
 	DFA_state_t* right;
 
@@ -641,7 +641,7 @@ static u_int8_t contains_accepting_state(NFA_state_list_t* l){
  * Follow all of the arrows that we have and recursively build a DFA state that is itself
  * a list of all the reachable NFA states
  */
-static void convert_to_DFA_state(NFA_state_list_t* list, NFA_state_t* start){
+static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
 	//Base case
 	if(start == NULL || list == NULL){
 		return;
@@ -650,8 +650,8 @@ static void convert_to_DFA_state(NFA_state_list_t* list, NFA_state_t* start){
 	//We have a split, so follow the split recursively
 	if(start->opt == SPLIT){
 		//Recursively add these 2 branches as well. This is how we convert from an NFA into a DFA
-		convert_to_DFA_state(list, start->next);
-		convert_to_DFA_state(list, start->next_opt);
+		get_reachable_rec(list, start->next);
+		get_reachable_rec(list, start->next_opt);
 	}
 
 	//Add this state to the list of NFA states
@@ -666,59 +666,49 @@ static void convert_to_DFA_state(NFA_state_list_t* list, NFA_state_t* start){
  * list will be stored in "list". "num_states" is the number of DFA states, which should in theory be the maximum number of 
  * states we could possibly have in one of our DFA state lists
  */
-static void state_list_init(NFA_state_t* start, NFA_state_list_t* list, u_int16_t num_states){
-	//Allocate list space
-	list->states = (NFA_state_t**)calloc(num_states, sizeof(NFA_state_t*));
+static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state_list, u_int16_t num_states){
+	//Allocate list space. At most, all NFA states could be reachable by this state, which is why we calloc with num_states
+	state_list->states = (NFA_state_t**)calloc(num_states, sizeof(NFA_state_t*));
 
 	//Currently there's nothing, so we'll set this to 0
-	list->length = 0;
+	state_list->length = 0;
 
 	//Begin our conversion by converting the start state given here into a DFA state
-	convert_to_DFA_state(list, start);
-}
-
-
-
-static DFA_state_t* initialize_DFA(NFA_state_t* NFA_start, NFA_state_list_t* list){
-	return NULL;
-
+	get_reachable_rec(state_list, start);
 }
 
 
 /**
  * A constructor that returns a DFA state whose "internals" are the list of NFA states
  * that are reachable at this state. This DFA state is dynamically allocated, and as such will need
- * to be destroyed at some point TODO
+ * to be destroyed at some point
  */
-static DFA_state_t* create_DFA_state(NFA_state_list_t* list){
+static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_states){
+	//Allocate a DFA state
+	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
+	//Allocate a list of transitions that will tell us what the next state(s) are
+	dfa_state->transitions = (DFA_state_t**)calloc(128, sizeof(DFA_state_t*));
 
+	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
+	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list), num_states);
+	
 
-	return NULL;
+	return dfa_state;
 }
 
 
 /**
- * Advance the current NFA state to the next NFA state given character 
+ * Translate an NFA into an equivalent DFA
  */
-static void next_state_NFA(NFA_state_list_t* current_list, NFA_state_list_t* next_list, char ch){
+static DFA_state_t* create_DFA(NFA_state_t* start, regex_mode_t mode, u_int16_t num_states){
+	//Create the initial starting state
+	DFA_state_t* dfa_start = create_DFA_state(start, num_states);
+	
 
-}
 
 
-/**
- * Use the current DFA_state and the character read from the string to advance to the next 
- * state, specifically for our DFA
- */
-static DFA_state_t* next_state_DFA(DFA_state_t* current_state, NFA_state_list_t* list, char c){
-	//Get the next state in the NFA given character c
-	next_state_NFA(&(current_state->nfa_state_list), list, c);
-
-	//We use the char c as the index for the next state transition
-	current_state->transitions[c] = create_DFA_state(list);
-
-	//Return a pointer to the next state that comes about by transitioning on c
-	return current_state->transitions[c];
+	return dfa_start;
 }
 
 
@@ -802,9 +792,15 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		}
 	}
 
+	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
+	//efficient to simulate since they are determinsitic, but they are much harder to create
+	//from regular expressions
+	regex.DFA = create_DFA(regex.NFA, mode, regex.num_states);
+
 
 	return regex;
 }
+
 
 /**
  * Error handling: 
@@ -846,21 +842,6 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 		return match;
 	}
 
-	//Declare and inititialize 2 NFA state lists for our uses here
-	NFA_state_list_t list_1;
-	NFA_state_list_t list_2;
-
-	//Allocate space for our lists TODO may not need list 2
-	list_1.states = (NFA_state_t**)malloc(sizeof(NFA_state_t*));
-	list_2.states = (NFA_state_t**)malloc(sizeof(NFA_state_t*));
-
-	//Start the DFA with the initializer function
-	DFA_state_t* DFA_start = initialize_DFA(regex.NFA, &list_1);
-
-	//Cleanup after ourselves
-	free(list_1.states);
-	free(list_2.states);
-
 	//Return the match struct
 	return match;
 }
@@ -887,6 +868,31 @@ static void teardown_NFA_state(NFA_state_t* state){
 	free(state);
 }
 
+
+/**
+ * Recursively free all DFA states that are pointed to. We should have no dangling states, so in theory,
+ * this should work
+ */
+static void teardown_DFA_state(DFA_state_t* state){
+	//Base case
+	if(state == NULL){
+		return;
+	}
+
+	//Recursively teardown every other state
+	for(u_int8_t i = 0; i < 128; i++){
+		teardown_DFA_state(state->transitions[i]);
+	}
+
+	//Free the nfa list
+	free(state->nfa_state_list.states);
+
+	//Free the transitions array
+	free(state->transitions);
+
+	//Free the state overall
+	free(state);
+}
 
 /**
  * Comprehensive cleanup function that cleans up everything related to the regex
