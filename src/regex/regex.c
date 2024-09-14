@@ -95,42 +95,6 @@ struct DFA_state_t {
 
 
 /**
- * Create and return a state
- */
-static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt, u_int16_t* num_states){
-	//Allocate a state
- 	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
-
-	//Assign these values
-	state->opt = opt;
-	state->next = next;
-	state->next_opt = next_opt;
-
-	//Increment the counter
-	(*num_states)++;
-
-	//Give the pointer back
-	return state;
-}
-
-
-/**
- * Create and return a fragment. A fragment is a partially built NFA. Our system works by building
- * consecutive fragments on top of previous fragments
- */
-static NFA_fragement_t* create_fragment(NFA_state_t* start, transition_list_t* arrows){
-	//Allocate our fragment
-	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
-
-	fragment->start = start;
-	fragment->arrows = arrows;
-
-	//Return a reference to the fragment
-	return fragment;
-}
-
-
-/**
  * Convert a regular expression from infix to postfix notation. The character
  * '`' is used as the explicit concatentation operator
  */
@@ -342,6 +306,43 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 	destroy_stack(stack, STATES_ONLY);
 	//Return the buffer
 	return postfix;
+}
+
+
+/* ================================================== NFA Methods ================================================ */
+/**
+ * Create and return a state
+ */
+static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt, u_int16_t* num_states){
+	//Allocate a state
+ 	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
+
+	//Assign these values
+	state->opt = opt;
+	state->next = next;
+	state->next_opt = next_opt;
+
+	//Increment the counter
+	(*num_states)++;
+
+	//Give the pointer back
+	return state;
+}
+
+
+/**
+ * Create and return a fragment. A fragment is a partially built NFA. Our system works by building
+ * consecutive fragments on top of previous fragments
+ */
+static NFA_fragement_t* create_fragment(NFA_state_t* start, transition_list_t* arrows){
+	//Allocate our fragment
+	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
+
+	fragment->start = start;
+	fragment->arrows = arrows;
+
+	//Return a reference to the fragment
+	return fragment;
 }
 
 
@@ -613,88 +614,10 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	return starting_state;
 }
 
-
-/**
- * Build an NFA and then DFA for a regular expression defined by the pattern
- * passed in.
- *
- * If anything goes wrong, a regex_t struct will be returned in a REGEX_ERR state. This regex
- * will then be useless by the match function
- */
-regex_t define_regular_expression(char* pattern, regex_mode_t mode){
-	//Stack allocate a regex
-	regex_t regex;
-	//Set to NULL as a flag
-	regex.NFA = NULL;
-
-	//Just in case
-	if(pattern == NULL || strlen(pattern) == 0){
-		//Verbose mode
-		if(mode == REGEX_VERBOSE){
-			printf("REGEX ERROR: Pattern cannot be null or empty\n");
-		}
-
-		//Set this flag so that the user knows
-		regex.state = REGEX_ERR;
-		return regex;
-	}
-
-	//Set a hard limit. I don't see a situation where we'd need more than 150 characters for a regex
-	if(strlen(pattern) >= REGEX_LEN){
-		//Verbose mode
-		if(mode == REGEX_VERBOSE){
-			printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
-		}
-
-		regex.state = REGEX_ERR;
-		return regex;
-	}
-
-	//Convert to postfix before applying our algorithm
-	char* postfix = in_to_post(pattern, mode);
-
-	
-	//If this didn't work, we will stop and return a bad regex
-	if(postfix == NULL){
-		//Verbose mode
-		if(mode == REGEX_VERBOSE){
-			printf("REGEX ERROR: Postfix conversion failed.\n");
-		}
-
-		//Put in error state
-		regex.state = REGEX_ERR;
-		return regex;
-	}
-
-	//Show postfix if it exists
-	if(mode == REGEX_VERBOSE){
-		printf("Postfix conversion: %s\n", postfix);
-	}
-
-	//Initially 0
-	regex.num_states = 0;
-
-	//Create the NFA first
-	regex.NFA = create_NFA(postfix, mode, &(regex.num_states));
-
-	//If this is bad, we'll bail out here
-	if(regex.NFA == NULL){
-		if(mode == REGEX_VERBOSE){
-			printf("REGEX ERROR: NFA creation failed.\n");
-			//Put in an error state
-			regex.state = REGEX_ERR;
-			
-			//Ensure there is no leakage
-			free(postfix);
-
-			return regex;
-		}
-	}
+/* ================================================ End NFA Methods ================================================ */
 
 
-	return regex;
-}
-
+/* ================================================== DFA Methods ================================================ */
 
 /**
  * Search the list to determine if the accepting state is in here. If the state is in here, that means
@@ -799,6 +722,90 @@ static DFA_state_t* next_state_DFA(DFA_state_t* current_state, NFA_state_list_t*
 }
 
 
+/* ================================================ End DFA Methods ================================================ */
+
+
+/**
+ * Build an NFA and then DFA for a regular expression defined by the pattern
+ * passed in.
+ *
+ * If anything goes wrong, a regex_t struct will be returned in a REGEX_ERR state. This regex
+ * will then be useless by the match function
+ */
+regex_t define_regular_expression(char* pattern, regex_mode_t mode){
+	//Stack allocate a regex
+	regex_t regex;
+	//Set to NULL as a flag
+	regex.NFA = NULL;
+
+	//Just in case
+	if(pattern == NULL || strlen(pattern) == 0){
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Pattern cannot be null or empty\n");
+		}
+
+		//Set this flag so that the user knows
+		regex.state = REGEX_ERR;
+		return regex;
+	}
+
+	//Set a hard limit. I don't see a situation where we'd need more than 150 characters for a regex
+	if(strlen(pattern) >= REGEX_LEN){
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
+		}
+
+		regex.state = REGEX_ERR;
+		return regex;
+	}
+
+	//Convert to postfix before applying our algorithm
+	char* postfix = in_to_post(pattern, mode);
+
+	
+	//If this didn't work, we will stop and return a bad regex
+	if(postfix == NULL){
+		//Verbose mode
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: Postfix conversion failed.\n");
+		}
+
+		//Put in error state
+		regex.state = REGEX_ERR;
+		return regex;
+	}
+
+	//Show postfix if it exists
+	if(mode == REGEX_VERBOSE){
+		printf("Postfix conversion: %s\n", postfix);
+	}
+
+	//Initially 0
+	regex.num_states = 0;
+
+	//Create the NFA first
+	regex.NFA = create_NFA(postfix, mode, &(regex.num_states));
+
+	//If this is bad, we'll bail out here
+	if(regex.NFA == NULL){
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: NFA creation failed.\n");
+			//Put in an error state
+			regex.state = REGEX_ERR;
+			
+			//Ensure there is no leakage
+			free(postfix);
+
+			return regex;
+		}
+	}
+
+
+	return regex;
+}
+
 /**
  * Error handling: 
  */
@@ -859,19 +866,22 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 }
 
 
+/* ================================================== Cleanup ================================================ */
+
+
 /**
  * Recursively free all NFA states in that are pointed to. We should have no dangling states, so 
  * in theory, this should work
  */
-static void free_NFA_state(NFA_state_t* state){
+static void teardown_NFA_state(NFA_state_t* state){
 	//Base case
 	if(state == NULL){
 		return;
 	}
 
 	//Recursively call free on the next states here
-	free_NFA_state(state->next);
-	free_NFA_state(state->next_opt);
+	teardown_NFA_state(state->next);
+	teardown_NFA_state(state->next_opt);
 
 	//Free the pointer to this state
 	free(state);
@@ -883,5 +893,8 @@ static void free_NFA_state(NFA_state_t* state){
  */
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
-	free_NFA_state(regex.NFA);
+	teardown_NFA_state(regex.NFA);
 }
+
+
+/* ================================================== Cleanup ================================================ */
