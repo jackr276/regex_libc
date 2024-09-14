@@ -402,6 +402,26 @@ static transition_list_t* concatenate_lists(transition_list_t* list_1, transitio
 
 
 /**
+ * Destroy the arrow list when we are done using it
+ * TODO: on a second thought, do we even need the arrow list? Something to think about
+ */
+static void destroy_transition_list(transition_list_t* list){
+	//Temp for freeing
+	transition_list_t* temp;
+
+	//Walk the list
+	while(list != NULL){
+		//Save list
+		temp = list;
+		//Advance the pointer
+		list = list->next;
+		//Free the current transition_list_t
+		free(temp);
+	}
+}
+
+
+/**
  * Build an NFA for a regular expression defined by the pattern
  * passed in.
  *
@@ -526,6 +546,10 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//Push the newly made state and its transition list onto the stack
 				push(stack, create_fragment(split,  combined));
 
+				//Free these pointers as they are no longer needed
+				free(frag_1);
+				free(frag_2);
+
 				break;
 
 			//0 or more, more specifically the kleene star
@@ -543,6 +567,9 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
 				push(stack, create_fragment(split, init_list(split->next)));
+
+				//Free this pointer as it is no longer needed
+				free(frag_1);
 
 				break;
 
@@ -563,6 +590,9 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 				//Create a new fragment that represent this whole structure and push to the stack
 				push(stack, create_fragment(frag_1->start, init_list(split->next)));
 			
+				//Free this pointer
+				free(frag_1);
+
 				break;
 
 			//0 or 1
@@ -580,6 +610,10 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
 				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, init_list(split->next))));
+
+				//Free this pointer
+				free(frag_1);
+
 				break;
 
 			//Any character that is not one of the special characters
@@ -631,6 +665,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 	//Cleanup
 	free(postfix);
+	destroy_transition_list(final->arrows);
 	destroy_stack(stack, STATES_ONLY);
 	return regex;
 }
