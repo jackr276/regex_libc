@@ -288,7 +288,7 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 	}
 
 	//We end up with one extra regular char here(overcounting?) so fix this way
-	num_reg_char--;
+	num_reg_char -= num_pipes;
 
 	//Add in any remaining needed concat operators
 	for(; num_reg_char > 1; num_reg_char--){
@@ -310,6 +310,8 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 
 
 /* ================================================== NFA Methods ================================================ */
+
+
 /**
  * Create and return a state
  */
@@ -880,7 +882,7 @@ static void teardown_DFA_state(DFA_state_t* state){
 	}
 
 	//Recursively teardown every other state
-	for(u_int8_t i = 0; i < 128; i++){
+	for(u_int16_t i = 0; i < 128; i++){
 		teardown_DFA_state(state->transitions[i]);
 	}
 

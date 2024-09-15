@@ -104,7 +104,7 @@ void* peek(stack_t* stack){
 /**
  * Completely free all memory in the stack
  */
-void destroy_stack(stack_t* stack, enum stack_mode_t mode){
+void destroy_stack(stack_t* stack, stack_cleanup_mode_t mode){
 	//Just in case...
 	if(stack == NULL){
 		printf("ERROR: Attempt to free a null pointer\n");

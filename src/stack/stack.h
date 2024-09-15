@@ -36,10 +36,10 @@ typedef struct {
  * FULL_CLEANUP: free all of the void* pointers on the stack
  * STATES_ONLY: all pointers are left alone. This may lead to memory leaks
  */
-enum stack_mode_t {
+typedef enum {
 	FULL_CLEANUP,
 	STATES_ONLY
-};
+} stack_cleanup_mode_t;
 
 /**
  * Initialize a stack
@@ -67,6 +67,6 @@ void* peek(stack_t* stack);
  * FULL_CLEANUP: free all of the void* pointers on the stack
  * STATES_ONLY: all pointers are left alone. This may lead to memory leaks
  */
-void destroy_stack(stack_t* stack, enum stack_mode_t mode);
+void destroy_stack(stack_t* stack, stack_cleanup_mode_t mode);
 
 #endif
