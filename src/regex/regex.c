@@ -435,8 +435,12 @@ static void print_NFA(NFA_state_t* nfa){
 
 	printf("State -%c->", (u_int8_t)nfa->opt);
 
-	print_NFA(nfa->next);
-	print_NFA(nfa->next_opt);
+	if(nfa->opt == SPLIT){
+		print_NFA(nfa->next);
+		print_NFA(nfa->next_opt);
+	} else {
+		print_NFA(nfa->next);
+	}
 }
 
 
