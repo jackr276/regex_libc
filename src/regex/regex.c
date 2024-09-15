@@ -695,21 +695,44 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
 	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list), num_states);
 	
-
+	//Return a pointer to our state
 	return dfa_state;
+}
+
+
+/**
+ * A recursive helper function for DFA creation
+ */
+static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int16_t num_states){
+	//Base case, we're done here
+	if(nfa_state == NULL){
+		//"dead end" so to speak
+		return;
+	}
+
+	//Create the new DFA state from this NFA state
+	previous->transitions[nfa_state->opt] = create_DFA_state(nfa_state, num_states);
+	//Update the previous pointer
+	previous = previous->transitions[nfa_state->opt];
+
+	//Recursively create the next DFA state for opt and next opt
+	create_DFA_rec(previous, nfa_state->next, num_states);
+	create_DFA_rec(previous, nfa_state->next_opt, num_states);
 }
 
 
 /**
  * Translate an NFA into an equivalent DFA
  */
-static DFA_state_t* create_DFA(NFA_state_t* start, regex_mode_t mode, u_int16_t num_states){
-	//Create the initial starting state
-	DFA_state_t* dfa_start = create_DFA_state(start, num_states);
-	
+static DFA_state_t* create_DFA(NFA_state_t* nfa_start, u_int16_t num_states){
+	//We'll explicitly create the start state here
+	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
+	dfa_start->transitions = (DFA_state_t**)calloc(sizeof(DFA_state_t*), 128);
 
+	//Call the recursive helper method to do the rest for us
+	create_DFA_rec(dfa_start, nfa_start, num_states);
 
-
+	//Return a pointer to the start state
 	return dfa_start;
 }
 
@@ -797,7 +820,16 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex.DFA = create_DFA(regex.NFA, mode, regex.num_states);
+	regex.DFA = create_DFA(regex.NFA, mode);
+
+	if(regex.DFA == NULL){
+		if(mode == REGEX_VERBOSE){
+			printf("REGEX ERROR: DFA creation failed.\n");
+			regex.state = REGEX_ERR;
+			free(postfix);
+			return regex;
+		}
+	}
 
 
 	return regex;
@@ -877,7 +909,7 @@ static void teardown_NFA_state(NFA_state_t* state){
  */
 static void teardown_DFA_state(DFA_state_t* state){
 	//Base case
-	if(state == NULL){
+	if(state == NULL || state->transitions == NULL){
 		return;
 	}
 
@@ -902,6 +934,7 @@ static void teardown_DFA_state(DFA_state_t* state){
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
 	teardown_NFA_state(regex.NFA);
+	teardown_DFA_state(regex.DFA);
 }
 
 
