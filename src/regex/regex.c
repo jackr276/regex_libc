@@ -34,7 +34,7 @@ typedef struct DFA_state_t DFA_state_t;
  * If opt = ACCEPTING, we have an accepting state
  */
 struct NFA_state_t {
-	u_int8_t opt;
+	u_int16_t opt;
 	//The default next 
 	NFA_state_t* next;
 	//The optional second next for alternating states 
@@ -424,6 +424,23 @@ static void destroy_transition_list(transition_list_t* list){
 }
 
 
+/**
+ * Ability to print out an NFA for debug purposes
+ */
+static void print_NFA(NFA_state_t* nfa){
+	if(nfa == NULL){
+		printf("End NFA.\n");
+		return;
+	}
+
+	printf("State -%c->", (u_int8_t)nfa->opt);
+
+	print_NFA(nfa->next);
+	print_NFA(nfa->next_opt);
+}
+
+
+
 static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
@@ -690,7 +707,7 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
 	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
 	//Allocate a list of transitions that will tell us what the next state(s) are
-	dfa_state->transitions = (DFA_state_t**)calloc(128, sizeof(DFA_state_t*));
+	dfa_state->transitions = (DFA_state_t**)calloc(130, sizeof(DFA_state_t*));
 
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
 	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list), num_states);
@@ -711,6 +728,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	}
 
 	//Create the new DFA state from this NFA state
+	printf("Inserting at: %u\n", nfa_state->opt);
 	previous->transitions[nfa_state->opt] = create_DFA_state(nfa_state, num_states);
 	//Update the previous pointer
 	previous = previous->transitions[nfa_state->opt];
@@ -727,7 +745,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, u_int16_t num_states){
 	//We'll explicitly create the start state here
 	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
-	dfa_start->transitions = (DFA_state_t**)calloc(sizeof(DFA_state_t*), 128);
+	dfa_start->transitions = (DFA_state_t**)calloc(sizeof(DFA_state_t*), 130);
 
 	//Call the recursive helper method to do the rest for us
 	create_DFA_rec(dfa_start, nfa_start, num_states);
@@ -815,6 +833,13 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 			return regex;
 		}
+	}
+
+	//Display if desired
+	if(mode == REGEX_VERBOSE){
+		printf("NFA conversion succeeded.\n");
+		print_NFA(regex.NFA);
+		printf("\n");
 	}
 
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
