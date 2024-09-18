@@ -412,8 +412,8 @@ static fringe_states_t* concatenate_lists(fringe_states_t* list_1, fringe_states
 
 
 /**
- * Destroy the arrow list when we are done using it
- * TODO: on a second thought, do we even need the arrow list? Something to think about
+ * Destroy the list of fringe states once we are done using it to avoid any
+ * memory leakage
  */
 static void destroy_fringe_list(fringe_states_t* list){
 	//Temp for freeing
@@ -465,6 +465,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	NFA_fragement_t* frag_1;
 	NFA_state_t* split;
 
+	//Declare this for our use as well
+	fringe_states_t* fringe;
+
 	//Keep track of chars processed
 	u_int16_t num_processed = 0;
 
@@ -494,6 +497,8 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//The fringe list of fragment 1 should be irrelevant now, so we can get rid of it
 				destroy_fringe_list(frag_1->fringe_states);
+				//However, we do still need the states in frag_2->fringe_states, so we'll leave those be
+
 				//We're done with these now, so we should free them
 				free(frag_1);
 				free(frag_2);
@@ -522,12 +527,13 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//fragment statrt states
 				split = create_state(SPLIT, frag_1->start,  frag_2->start, num_states);
 
-				//Append the arrow lists of the two fragments so that the new state split has them both
+				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states,frag_2->fringe_states);
 
 				//Push the newly made state and its transition list onto the stack
 				push(stack, create_fragment(split,  combined));
 
+				//Notice how we won't free any lists here, because they both still hold data about the fringe
 				//Free these pointers as they are no longer needed
 				free(frag_1);
 				free(frag_2);
@@ -544,7 +550,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
-				//Make the arrows in the old fragment point back to the start of the state
+
 				concatenate_states(frag_1->fringe_states, split);
 
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
@@ -566,7 +572,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//This acts as our optional 0 or 1
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
-				//Set the most recent fragment to point to this new state so that it's connected
+				//Set all of the fringe states in frag_1 
 				concatenate_states(frag_1->fringe_states, split);
 
 				//Create a new fragment that represent this whole structure and push to the stack
@@ -577,7 +583,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				break;
 
-			//0 or 1
+			//0 or 1 instances of the preceding fragment
 			case '?':
 				num_processed++;
 
@@ -588,11 +594,14 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//state. This allows for a "zero or one" function
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
-				//Note how for this one, we won't concatenate states at all
-
+				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
+				//the two fringe lists into one big one because the fringe is a combined fringe
+				fringe = concatenate_lists(frag_1->fringe_states, init_list(split->next));
+				
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
-				push(stack, create_fragment(split, concatenate_lists(frag_1->fringe_states, init_list(split->next))));
+				push(stack, create_fragment(split, fringe));
 
+				//We won't free the fragments list here because it still holds fringe data
 				//Free this pointer
 				free(frag_1);
 
@@ -605,6 +614,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new state with the charcter, and no attached states
 				NFA_state_t* s = create_state(ch, NULL, NULL, num_states);
+
 				//Create a fragment, with the fringe states of that fragment being just this new state that we
 				//created
 				NFA_fragement_t* fragment = create_fragment(s,  init_list(s));
@@ -866,6 +876,9 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
+	//
+	// remove now for testing
+/*
 	regex.DFA = create_DFA(regex.NFA, mode);
 
 	if(regex.DFA == NULL){
@@ -876,7 +889,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 			return regex;
 		}
 	}
-
+*/
 
 	return regex;
 }
@@ -980,7 +993,7 @@ static void teardown_DFA_state(DFA_state_t* state){
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
 	teardown_NFA_state(regex.NFA);
-	teardown_DFA_state(regex.DFA);
+//	teardown_DFA_state(regex.DFA);
 }
 
 
