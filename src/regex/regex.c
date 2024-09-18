@@ -44,7 +44,9 @@ struct NFA_state_t {
 
 /**
  * Define a linked list structure that holds all of the states on the 
- * fringe of a fragment. 
+ * fringe of a fragment. States on the fringe of a fragment are the ones
+ * that will need to be patched into the next fragment, so we should keep track
+ * of these
  */
 struct fringe_states_t {
 	//The next arrow list struct
@@ -349,10 +351,12 @@ static NFA_fragement_t* create_fragment(NFA_state_t* start, fringe_states_t* fri
 
 
 /**
- * Create a list containing a single arrow to out. This is what makes this a starting list.
+ * Create a list of fringe states containing just the singular state. This will be used
+ * when we first create a new fragment for a single character, since when this happens, the
+ * only thing in the "fringe" is that fragment itself
  */
 static fringe_states_t* init_list(NFA_state_t* state){
-	//Create a new arrow_list_t
+	//Create a new fringe_states_t 
 	fringe_states_t* list = malloc(sizeof(fringe_states_t));
 
 	//Assign the state pointer
@@ -369,14 +373,17 @@ static fringe_states_t* init_list(NFA_state_t* state){
  * Path the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
  */
-static void concatenate_states(fringe_states_t* out_list, NFA_state_t* start){
+static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start){
 	//A cursor so we don't affect the original pointer
-	fringe_states_t* cursor = out_list;
+	fringe_states_t* cursor = fringe;
 
 	//Go over the entire outlist
 	while(cursor != NULL){
-		//Patch the cursor's state to be start
-		cursor->state = start;
+		//If this has a valid state
+		if(cursor->state != NULL){
+			//This fringe states next state should be the new start state
+			cursor->state->next = start;
+		}
 
 		//Advance the cursor
 		cursor = cursor->next;
@@ -408,7 +415,7 @@ static fringe_states_t* concatenate_lists(fringe_states_t* list_1, fringe_states
  * Destroy the arrow list when we are done using it
  * TODO: on a second thought, do we even need the arrow list? Something to think about
  */
-static void destroy_transition_list(fringe_states_t* list){
+static void destroy_fringe_list(fringe_states_t* list){
 	//Temp for freeing
 	fringe_states_t* temp;
 
@@ -477,12 +484,16 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_2 = (NFA_fragement_t*)pop(stack);
 			    frag_1 = (NFA_fragement_t*)pop(stack);
 
-				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
+				//We need to set all of the fringe states in fragment 1 to point to the start
+				//of fragment 2
 				concatenate_states(frag_1->fringe_states, frag_2->start);
 
-				//Push a new fragment up where the start of frag_1 points is the start
+				//Push a new fragment up where the start of frag_1 points is the start, and all of the fringe states
+				//are fragment 2's fringe states
 				push(stack, create_fragment(frag_1->start, frag_2->fringe_states));
 
+				//The fringe list of fragment 1 should be irrelevant now, so we can get rid of it
+				destroy_fringe_list(frag_1->fringe_states);
 				//We're done with these now, so we should free them
 				free(frag_1);
 				free(frag_2);
@@ -591,10 +602,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 			default:
 				//One more processed
 				num_processed++;
+
 				//Create a new state with the charcter, and no attached states
 				NFA_state_t* s = create_state(ch, NULL, NULL, num_states);
-				//Create a fragment
-				NFA_fragement_t* fragment = create_fragment(s,  init_list(s->next));
+				//Create a fragment, with the fringe states of that fragment being just this new state that we
+				//created
+				NFA_fragement_t* fragment = create_fragment(s,  init_list(s));
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack,  fragment);
@@ -627,7 +640,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 	/* cleanup */
 	//We no longer need the final fragment
-	destroy_transition_list(final->fringe_states);
+	destroy_fringe_list(final->fringe_states);
 
 	//Save this before we free final
 	NFA_state_t* starting_state = final->start;
