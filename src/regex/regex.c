@@ -22,7 +22,7 @@
 //For convenience
 typedef struct NFA_state_t NFA_state_t;
 typedef struct NFA_fragement_t NFA_fragement_t;
-typedef struct transition_list_t transition_list_t;
+typedef struct fringe_states_t fringe_states_t;
 typedef struct state_list_t state_list_t ;
 typedef struct NFA_state_list_t NFA_state_list_t;
 typedef struct DFA_state_t DFA_state_t;
@@ -43,12 +43,12 @@ struct NFA_state_t {
 
 
 /**
- * Define a list of the transitions between
- * states
+ * Define a linked list structure that holds all of the states on the 
+ * fringe of a fragment. 
  */
-struct transition_list_t {
+struct fringe_states_t {
 	//The next arrow list struct
-	transition_list_t* next;
+	fringe_states_t* next;
 	//The state that we point to
 	NFA_state_t* state;
 };
@@ -63,8 +63,8 @@ struct transition_list_t {
 struct NFA_fragement_t {
 	//The start state of the fragment
 	NFA_state_t* start;
-	//The linked list of all arrows or transitions out of the state
-	transition_list_t* arrows;
+	//Keep track of all of the states on the very edge of our fragment
+	fringe_states_t* fringe_states;
 };
 
 
@@ -336,12 +336,12 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
  * Create and return a fragment. A fragment is a partially built NFA. Our system works by building
  * consecutive fragments on top of previous fragments
  */
-static NFA_fragement_t* create_fragment(NFA_state_t* start, transition_list_t* arrows){
+static NFA_fragement_t* create_fragment(NFA_state_t* start, fringe_states_t* fringe_states){
 	//Allocate our fragment
 	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
 
 	fragment->start = start;
-	fragment->arrows = arrows;
+	fragment->fringe_states = fringe_states;
 
 	//Return a reference to the fragment
 	return fragment;
@@ -351,12 +351,12 @@ static NFA_fragement_t* create_fragment(NFA_state_t* start, transition_list_t* a
 /**
  * Create a list containing a single arrow to out. This is what makes this a starting list.
  */
-static transition_list_t* init_list(NFA_state_t* out){
+static fringe_states_t* init_list(NFA_state_t* state){
 	//Create a new arrow_list_t
-	transition_list_t* list = malloc(sizeof(transition_list_t));
+	fringe_states_t* list = malloc(sizeof(fringe_states_t));
 
 	//Assign the state pointer
-	list->state = out;
+	list->state = state;
 	//The next pointer is NULL, this hasn't been attached to any other states yet
 	list->next = NULL;
 
@@ -369,9 +369,9 @@ static transition_list_t* init_list(NFA_state_t* out){
  * Path the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
  */
-static void concatenate_states(transition_list_t* out_list, NFA_state_t* start){
+static void concatenate_states(fringe_states_t* out_list, NFA_state_t* start){
 	//A cursor so we don't affect the original pointer
-	transition_list_t* cursor = out_list;
+	fringe_states_t* cursor = out_list;
 
 	//Go over the entire outlist
 	while(cursor != NULL){
@@ -388,9 +388,9 @@ static void concatenate_states(transition_list_t* out_list, NFA_state_t* start){
  * Connect the two linked lists of list_1 and list_2 to be one big linked list
  * with list_1 as the head
  */
-static transition_list_t* concatenate_lists(transition_list_t* list_1, transition_list_t* list_2){
+static fringe_states_t* concatenate_lists(fringe_states_t* list_1, fringe_states_t* list_2){
 	//A cursor for traversal
-	transition_list_t* cursor = list_1;
+	fringe_states_t* cursor = list_1;
 
 	//Find the tail of list 1
 	while(cursor->next != NULL){
@@ -408,9 +408,9 @@ static transition_list_t* concatenate_lists(transition_list_t* list_1, transitio
  * Destroy the arrow list when we are done using it
  * TODO: on a second thought, do we even need the arrow list? Something to think about
  */
-static void destroy_transition_list(transition_list_t* list){
+static void destroy_transition_list(fringe_states_t* list){
 	//Temp for freeing
-	transition_list_t* temp;
+	fringe_states_t* temp;
 
 	//Walk the list
 	while(list != NULL){
@@ -433,7 +433,11 @@ static void print_NFA(NFA_state_t* nfa){
 		return;
 	}
 
-	printf("State -%c->", (u_int8_t)nfa->opt);
+	if(nfa->opt == SPLIT){
+		printf("State -SPLIT->");
+	} else {
+		printf("State -%c->", (u_int8_t)nfa->opt);
+	}
 
 	if(nfa->opt == SPLIT){
 		print_NFA(nfa->next);
@@ -474,10 +478,10 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 			    frag_1 = (NFA_fragement_t*)pop(stack);
 
 				//We'll need to map all of the transitions in fragment 1 to point to the start of fragment 2
-				concatenate_states(frag_1->arrows, frag_2->start);
+				concatenate_states(frag_1->fringe_states, frag_2->start);
 
 				//Push a new fragment up where the start of frag_1 points is the start
-				push(stack, create_fragment(frag_1->start, frag_2->arrows));
+				push(stack, create_fragment(frag_1->start, frag_2->fringe_states));
 
 				//We're done with these now, so we should free them
 				free(frag_1);
@@ -508,7 +512,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				split = create_state(SPLIT, frag_1->start,  frag_2->start, num_states);
 
 				//Append the arrow lists of the two fragments so that the new state split has them both
-				transition_list_t* combined = concatenate_lists(frag_1->arrows,frag_2->arrows);
+				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states,frag_2->fringe_states);
 
 				//Push the newly made state and its transition list onto the stack
 				push(stack, create_fragment(split,  combined));
@@ -530,7 +534,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
 				//Make the arrows in the old fragment point back to the start of the state
-				concatenate_states(frag_1->arrows, split);
+				concatenate_states(frag_1->fringe_states, split);
 
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
 				push(stack, create_fragment(split, init_list(split->next)));
@@ -552,7 +556,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
 				//Set the most recent fragment to point to this new state so that it's connected
-				concatenate_states(frag_1->arrows, split);
+				concatenate_states(frag_1->fringe_states, split);
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				push(stack, create_fragment(frag_1->start, init_list(split->next)));
@@ -576,7 +580,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Note how for this one, we won't concatenate states at all
 
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
-				push(stack, create_fragment(split, concatenate_lists(frag_1->arrows, init_list(split->next))));
+				push(stack, create_fragment(split, concatenate_lists(frag_1->fringe_states, init_list(split->next))));
 
 				//Free this pointer
 				free(frag_1);
@@ -619,11 +623,11 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, num_states);
 
 	//Patch in the accepting state
-	concatenate_states(final->arrows, accepting_state);
+	concatenate_states(final->fringe_states, accepting_state);
 
 	/* cleanup */
 	//We no longer need the final fragment
-	destroy_transition_list(final->arrows);
+	destroy_transition_list(final->fringe_states);
 
 	//Save this before we free final
 	NFA_state_t* starting_state = final->start;
