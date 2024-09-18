@@ -19,13 +19,14 @@
 #define REGEX_LEN 150
 #define CONCATENATION '`'
 
-//For convenience
+//Forward declare
 typedef struct NFA_state_t NFA_state_t;
 typedef struct NFA_fragement_t NFA_fragement_t;
 typedef struct fringe_states_t fringe_states_t;
 typedef struct state_list_t state_list_t ;
 typedef struct NFA_state_list_t NFA_state_list_t;
 typedef struct DFA_state_t DFA_state_t;
+
 
 /**
  * A struct that defines an NFA state
@@ -372,8 +373,10 @@ static fringe_states_t* init_list(NFA_state_t* state){
 /**
  * Path the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
+ *
+ * point_opt will make use of next if 1, next_opt if 0
  */
-static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start){
+static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start, u_int8_t point_opt){
 	//A cursor so we don't affect the original pointer
 	fringe_states_t* cursor = fringe;
 
@@ -382,7 +385,11 @@ static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start){
 		//If this has a valid state
 		if(cursor->state != NULL){
 			//This fringe states next state should be the new start state
-			cursor->state->next = start;
+			if(point_opt == 1){
+				cursor->state->next = start;
+			} else {
+				cursor->state->next_opt = start;
+			}
 		}
 
 		//Advance the cursor
@@ -489,7 +496,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//We need to set all of the fringe states in fragment 1 to point to the start
 				//of fragment 2
-				concatenate_states(frag_1->fringe_states, frag_2->start);
+				concatenate_states(frag_1->fringe_states, frag_2->start, 1);
 
 				//Push a new fragment up where the start of frag_1 points is the start, and all of the fringe states
 				//are fragment 2's fringe states
@@ -512,19 +519,8 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_2 = (NFA_fragement_t*)pop(stack);
 				frag_1 = (NFA_fragement_t*)pop(stack);
 
-				//Check to make sure we actually have stuff to work with here
-				if(frag_1 == NULL || frag_2 == NULL){
-					//Print out if in verbose mode
-					if(mode == REGEX_VERBOSE){
-						printf("REGEX_ERR: Alternate operator(|) was passed with 0 or 1 input.\n");
-					}
-	
-					//Return as a warning
-					return NULL;
-				}
-
 				//Create a new special "split" state that acts as a fork in the road between the two
-				//fragment statrt states
+				//fragment start states
 				split = create_state(SPLIT, frag_1->start,  frag_2->start, num_states);
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
@@ -550,12 +546,15 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
-
-				concatenate_states(frag_1->fringe_states, split);
+				//Make all of the states in fragment_1 point to the beginning of the split 
+				//using their next_opt to allow for our "0 or more" functionality 
+				concatenate_states(frag_1->fringe_states, split, 1);
 
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
 				push(stack, create_fragment(split, init_list(split->next)));
 
+				//We should no longer need thses now
+				destroy_fringe_list(frag_1->fringe_states);
 				//Free this pointer as it is no longer needed
 				free(frag_1);
 
@@ -572,10 +571,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//This acts as our optional 0 or 1
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
-				//Set all of the fringe states in frag_1 
-				concatenate_states(frag_1->fringe_states, split);
+				//Set all of the fringe states in frag_1 to point at  
+				concatenate_states(frag_1->fringe_states, split, 1);
 
 				//Create a new fragment that represent this whole structure and push to the stack
+				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
+				//TODO this feels broken
 				push(stack, create_fragment(frag_1->start, init_list(split->next)));
 			
 				//Free this pointer
@@ -645,8 +646,8 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	//Create the accepting state
 	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, num_states);
 
-	//Patch in the accepting state
-	concatenate_states(final->fringe_states, accepting_state);
+	//Set everything in the final fringe to point to the accepting state
+	concatenate_states(final->fringe_states, accepting_state, 1);
 
 	/* cleanup */
 	//We no longer need the final fragment
@@ -956,6 +957,8 @@ static void teardown_NFA_state(NFA_state_t* state){
 	//Recursively call free on the next states here
 	teardown_NFA_state(state->next);
 	teardown_NFA_state(state->next_opt);
+
+	//TODO FIXME the accepting state here is double free'd, maybe try double pointers?
 
 	//Free the pointer to this state
 	free(state);

@@ -10,7 +10,7 @@
 int main(){
 
 	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("a*bc", REGEX_VERBOSE);
+	regex_t tester_2 = define_regular_expression("a*b", REGEX_VERBOSE);
 
 	destroy_regex(tester_2);
 	
