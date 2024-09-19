@@ -78,6 +78,8 @@ struct NFA_fragement_t {
 struct NFA_state_list_t {
 	NFA_state_t** states;
 	u_int16_t length;
+	//Does this list contain an accepting state?
+	u_int8_t contains_accepting_state;
 };
 
 
@@ -576,7 +578,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
-				//TODO this feels broken
 				push(stack, create_fragment(frag_1->start, init_list(split->next)));
 			
 				//Free this pointer
@@ -670,23 +671,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 /* ================================================== DFA Methods ================================================ */
 
-/**
- * Search the list to determine if the accepting state is in here. If the state is in here, that means
- * that it is reachable, and as such we have a match
- */
-static u_int8_t contains_accepting_state(NFA_state_list_t* l){
-	//Search the array for an accepting state
-	for(u_int16_t i = 0; i < l->length; i++){
-		//If we find one, return true
-		if(l->states[i]->opt == ACCEPTING){
-			return 1;
-		}
-	}
-
-	//If we get here, this list doesn't have one, so return false
-	return 0;
-}
-
 
 /**
  * Follow all of the arrows that we have and recursively build a DFA state that is itself
@@ -707,6 +691,12 @@ static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
 
 	//Add this state to the list of NFA states
 	list->states[list->length] = start;
+
+	//If we find an accepting state, then set this flag. This will speed up our match function
+	if(start->opt == ACCEPTING){
+		list->contains_accepting_state = 1;
+	}
+
 	//Increment the length
 	list->length++;
 }
@@ -723,6 +713,9 @@ static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state
 
 	//Currently there's nothing, so we'll set this to 0
 	state_list->length = 0;
+
+	//By default, we don't have an accepting state in our list
+	state_list->contains_accepting_state = 0;
 
 	//Begin our conversion by converting the start state given here into a DFA state
 	get_reachable_rec(state_list, start);
@@ -878,6 +871,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//from regular expressions
 	regex.DFA = create_DFA(regex.NFA, mode);
 
+	//If it didn't work
 	if(regex.DFA == NULL){
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: DFA creation failed.\n");
@@ -887,27 +881,59 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		}
 	}
 
+	//If the user request verbose mode, we'll display
+	if(mode == REGEX_VERBOSE){
+		printf("regex_t creation succeeded. Regex is now ready to be used.\n");
+	}
 
+	//If we make it here, we did a valid postfix, NFA and then NFA->DFA conversion, so
+	//the regex is all set
 	return regex;
 }
 
 
+static void match(regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode){
+	//Advance the string pointer to be at the starting index the user asked for
+	char* match_string = string + starting_index;
+
+	//By default, we are not currently in a pattern
+	u_int8_t in_pattern = 0;
+
+	//By defualt, we are in the starting state
+	DFA_state_t* current_state = (DFA_state_t*)(regex->DFA);
+
+	//Scan through the string
+	while(*match_string != '\0'){
+
+	}
+
+
+
+
+
+}
+
+
 /**
- * Error handling: 
+ * The public facing match method that the user will call when attempting to pattern match
+ * 
  */
 regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode){
+	//Stack allocated match struct
 	regex_match_t match;
+
 	//Error mode by default
 	match.status = MATCH_ERR;
 
 	//If we are given a bad regex 
-	if(regex.state != REGEX_ERR){
+	if(regex.NFA == NULL || regex.state != REGEX_ERR){
 		//Verbose mode
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: Attempt to use an invalid regex.\n");
 		}
 
 		//Pack in the values and return match.match_start = 0;
+		match.match_start_idx = 0;
 		match.match_end_idx = 0;
 
 		//We return this value so that the caller can know what the error was
@@ -930,6 +956,8 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 		match.status = MATCH_INV_INPUT;
 		return match;
 	}
+
+
 
 	//Return the match struct
 	return match;
@@ -998,6 +1026,7 @@ static void teardown_DFA_state(DFA_state_t* state){
 	//Free the state overall
 	free(state);
 }
+
 
 /**
  * Comprehensive cleanup function that cleans up everything related to the regex
