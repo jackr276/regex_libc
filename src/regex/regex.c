@@ -760,7 +760,6 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	}
 
 	//Create the new DFA state from this NFA state
-	printf("Inserting at: %u\n", nfa_state->opt);
 	previous->transitions[nfa_state->opt] = create_DFA_state(nfa_state, num_states);
 	//Update the previous pointer
 	previous = previous->transitions[nfa_state->opt];
@@ -878,8 +877,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
 	//
-	// remove now for testing
-/*
+
 	regex.DFA = create_DFA(regex.NFA, mode);
 
 	if(regex.DFA == NULL){
@@ -890,7 +888,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 			return regex;
 		}
 	}
-*/
+
 
 	return regex;
 }
@@ -1003,7 +1001,7 @@ static void teardown_DFA_state(DFA_state_t* state){
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
 	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
-//	teardown_DFA_state(regex.DFA);
+	teardown_DFA_state(regex.DFA);
 }
 
 
