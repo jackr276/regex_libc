@@ -64,9 +64,9 @@ typedef struct {
  */
 typedef struct {
 	//The pointer to the first match index
-	u_int8_t match_start;
+	u_int32_t match_start_idx;
 	//The pointer to the end of the match
-	u_int8_t match_end;
+	u_int32_t match_end_idx;
 	//The match status
 	match_status_t status;
 
@@ -84,7 +84,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode);
  * the DFA in regex_t.
  * Returns 0 if no match, 1 if a match
  */
-regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode);
+regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode);
 
 
 /**

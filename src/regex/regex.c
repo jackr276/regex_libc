@@ -876,8 +876,6 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	//
-
 	regex.DFA = create_DFA(regex.NFA, mode);
 
 	if(regex.DFA == NULL){
@@ -897,7 +895,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 /**
  * Error handling: 
  */
-regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
+regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode){
 	regex_match_t match;
 	//Error mode by default
 	match.status = MATCH_ERR;
@@ -909,9 +907,8 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 			printf("REGEX ERROR: Attempt to use an invalid regex.\n");
 		}
 
-		//Pack in the values and return
-		match.match_start = 0;
-		match.match_end = 0;
+		//Pack in the values and return match.match_start = 0;
+		match.match_end_idx = 0;
 
 		//We return this value so that the caller can know what the error was
 		match.status = MATCH_INV_INPUT;
@@ -928,8 +925,8 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
 		}
 
 		//Pack in the values and return
-		match.match_start = 0;
-		match.match_end = 0;
+		match.match_start_idx = 0;
+		match.match_end_idx = 0;
 		match.status = MATCH_INV_INPUT;
 		return match;
 	}
@@ -946,19 +943,26 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
  * Recursively free all NFA states in that are pointed to. We should have no dangling states, so 
  * in theory, this should work
  */
-static void teardown_NFA_state(NFA_state_t** state_ptr){
+static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t* accepting_state){
 	//Base case
-	if(state_ptr == NULL || *state_ptr == NULL || (*state_ptr)->opt == ACCEPTING){
+	if(state_ptr == NULL || *state_ptr == NULL){ 
+		return;
+	}
+
+	//If we find the accepting state we will save it for later to be freed by
+	//the caller
+	if((*state_ptr)->opt == ACCEPTING){
+		accepting_state = *state_ptr;
 		return;
 	}
 
 	//Recursively call free on the next states here
 	if((*state_ptr)->next != NULL){
-		teardown_NFA_state(&((*state_ptr)->next));
+		teardown_NFA_state(&((*state_ptr)->next), accepting_state);
 	}
 
 	if((*state_ptr)->next_opt != NULL){
-		teardown_NFA_state(&((*state_ptr)->next_opt));
+		teardown_NFA_state(&((*state_ptr)->next_opt), accepting_state);
 	}
 
 	//TODO FIXME the accepting state here is double free'd, maybe try double pointers?
@@ -1000,7 +1004,16 @@ static void teardown_DFA_state(DFA_state_t* state){
  */
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
-	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
+	NFA_state_t* accepting_state;
+	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)), accepting_state);
+	//Once this function runs, we should have a reference to the accepting state that we can free
+	//TODO FIXME here
+	/*
+	if(accepting_state != NULL){
+		free(accepting_state);
+	}
+	*/
+
 	teardown_DFA_state(regex.DFA);
 }
 
