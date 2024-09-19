@@ -948,20 +948,27 @@ regex_match_t regex_match(regex_t regex, char* string, regex_mode_t mode){
  * Recursively free all NFA states in that are pointed to. We should have no dangling states, so 
  * in theory, this should work
  */
-static void teardown_NFA_state(NFA_state_t* state){
+static void teardown_NFA_state(NFA_state_t** state_ptr){
 	//Base case
-	if(state == NULL){
+	if(state_ptr == NULL || *state_ptr == NULL || (*state_ptr)->opt == ACCEPTING){
 		return;
 	}
 
 	//Recursively call free on the next states here
-	teardown_NFA_state(state->next);
-	teardown_NFA_state(state->next_opt);
+	if((*state_ptr)->next != NULL){
+		teardown_NFA_state(&((*state_ptr)->next));
+	}
+
+	if((*state_ptr)->next_opt != NULL){
+		teardown_NFA_state(&((*state_ptr)->next_opt));
+	}
 
 	//TODO FIXME the accepting state here is double free'd, maybe try double pointers?
 
 	//Free the pointer to this state
-	free(state);
+	free(*state_ptr);
+	//Set to NULL as a warning
+	*state_ptr = NULL;
 }
 
 
@@ -995,7 +1002,7 @@ static void teardown_DFA_state(DFA_state_t* state){
  */
 void destroy_regex(regex_t regex){
 	//Call the recursive NFA freeing function
-	teardown_NFA_state(regex.NFA);
+	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
 //	teardown_DFA_state(regex.DFA);
 }
 
