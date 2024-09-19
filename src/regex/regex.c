@@ -274,6 +274,45 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 				buffer++;
 				break;
 
+			//Explicit escape character
+			case '~':
+				//Fail case: if the cursor is at the end, we have an issue
+				if(*(cursor + 1) == '\0'){
+					if(mode == REGEX_VERBOSE){
+						printf("REGEX_ERROR: Use of escape character '~' with nothing following it.\n");
+					}
+					//Return NULL since this would be a fail case
+					free(buffer);
+					return NULL;
+				}
+
+				//Add in explicit concatenation is we need to
+				if(num_reg_char > 1){
+					*buffer = CONCATENATION;
+					buffer++;
+					num_reg_char--;
+				}
+
+				//We've seen one more regular character
+				num_reg_char++;
+
+				//Advance the cursor to skip over this char 
+				cursor++;
+
+				//Add this into the buffer
+				*buffer = '~';
+				//Push up the buffer pointer
+				buffer++;
+
+				//Add this character into the buffer
+				*buffer = *cursor;
+				
+				//Advance the buffer
+				buffer++;
+
+				break;
+				
+
 			//Anything that isn't a special character is treated normally
 			default:
 				//If we've already seen more than one regular char, we need to add a concat operator
@@ -472,7 +511,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	//Declare these for use 
 	NFA_fragement_t* frag_2;
 	NFA_fragement_t* frag_1;
+	NFA_fragement_t* fragment;
 	NFA_state_t* split;
+	NFA_state_t* s;
 
 	//Declare this for our use as well
 	fringe_states_t* fringe;
@@ -609,20 +650,40 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				break;
 
+			//If we see the escape character, then we process the immediately next character as a regular char
+			case '~':
+				//One more processed
+				num_processed++;
+
+				//We'll skip over this character, the one that's next is what really matters
+				cursor++;
+
+				//Create a new state with the escaped character
+				s = create_state(*cursor, NULL,  NULL,  num_states);
+
+				//Create a fragment with the fringe states being the new state that we created
+				fragment = create_fragment(s, init_list(s));
+
+				//Push this new fragment to the stack
+				push(stack, fragment);
+
+				break;
+
 			//Any character that is not one of the special characters
 			default:
 				//One more processed
 				num_processed++;
 
 				//Create a new state with the charcter, and no attached states
-				NFA_state_t* s = create_state(ch, NULL, NULL, num_states);
+				s = create_state(ch, NULL, NULL, num_states);
 
 				//Create a fragment, with the fringe states of that fragment being just this new state that we
 				//created
-				NFA_fragement_t* fragment = create_fragment(s,  init_list(s));
+				fragment = create_fragment(s,  init_list(s));
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack,  fragment);
+
 				break;
 		}
 	}
