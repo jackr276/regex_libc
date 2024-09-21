@@ -19,6 +19,6 @@ test:
 	$(OUT_DIR)/regex_test
 
 clean:
-	rm -r $(OUT_DIR)*
+	rm -r $(OUT_DIR)/*
 
 

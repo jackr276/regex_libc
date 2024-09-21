@@ -93,9 +93,6 @@ struct DFA_state_t {
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
 	DFA_state_t** transitions;
-	DFA_state_t* left;
-	DFA_state_t* right;
-
 };
 
 
@@ -953,25 +950,46 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 }
 
 
-static void match(regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode){
+/**
+ * A helper function that will simulate the running of the DFA to create matching //FIXME
+ */
+static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode){
 	//Advance the string pointer to be at the starting index the user asked for
 	char* match_string = string + starting_index;
 
 	//By default, we are not currently in a pattern
 	u_int8_t in_pattern = 0;
 
+	//By default, we haven't found anything
+	match->status = MATCH_NOT_FOUND;
+	//Initialize this to the starting index
+	match->match_start_idx = starting_index;
+	//By default, these match meaning we don't have a match
+	match->match_end_idx = starting_index;
+
+	//Store a reference to the current state
+	DFA_state_t* start_state = (DFA_state_t*)(regex->DFA);
 	//By defualt, we are in the starting state
-	DFA_state_t* current_state = (DFA_state_t*)(regex->DFA);
+	DFA_state_t* current_state = start_state;
 
+	char ch;
 	//Scan through the string
-	while(*match_string != '\0'){
+	while((ch = *match_string) != '\0'){
+		//For each character, we'll attempt to advance using the transition list. If the transition list at that
+		//character does not =NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
+		if(current_state->transitions[ch] != NULL){
+			//If we end up in here, we are at least in the start of a match
+			match->status = MATCH_FOUND;
 
+		}
+
+
+
+
+
+		//Push the pointer up
+		match_string++;
 	}
-
-
-
-
-
 }
 
 
@@ -1053,8 +1071,6 @@ static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t* accepting_s
 	if((*state_ptr)->next_opt != NULL){
 		teardown_NFA_state(&((*state_ptr)->next_opt), accepting_state);
 	}
-
-	//TODO FIXME the accepting state here is double free'd, maybe try double pointers?
 
 	//Free the pointer to this state
 	free(*state_ptr);
