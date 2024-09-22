@@ -500,6 +500,31 @@ static void print_NFA(NFA_state_t* nfa){
 }
 
 
+/**
+ * Ability to print out a DFA for debug purposes
+ */
+static void print_DFA(DFA_state_t* dfa){
+	//If the state is null we'll stop
+	if(dfa == NULL){
+		return;
+	}
+
+	printf("{");
+
+	for(u_int16_t i = 0; i < dfa->nfa_state_list.length; i++){
+		printf("%c ", dfa->nfa_state_list.states[i]->opt);
+	}
+
+	printf("}->");
+
+	for(u_int16_t i = 0; i < 130; i++){
+		if(dfa->transitions[i] == NULL){
+			print_DFA(dfa->transitions[i]);
+		}
+	}
+}
+
+
 
 static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
 	//Create a stack for pushing/popping
@@ -811,9 +836,9 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	}
 
 	//Create the new DFA state from this NFA state
-	previous->transitions[nfa_state->opt] = create_DFA_state(nfa_state, num_states);
+	previous->transitions[(u_int16_t)(nfa_state->opt)] = create_DFA_state(nfa_state, num_states);
 	//Update the previous pointer
-	previous = previous->transitions[nfa_state->opt];
+	previous = previous->transitions[(u_int16_t)(nfa_state->opt)];
 
 	//Recursively create the next DFA state for opt and next opt
 	create_DFA_rec(previous, nfa_state->next, num_states);
@@ -941,6 +966,13 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		}
 	}
 
+	//Display if desired
+	if(mode == REGEX_VERBOSE){
+		printf("DFA conversion succeeded.\n");
+		print_DFA(regex.DFA);
+		printf("\n");
+	}
+
 	//If it did work, we'll set everything to true
 	regex.state = REGEX_VALID;
 
@@ -982,6 +1014,11 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
 		if(current_state->transitions[(u_int16_t)ch] != NULL){
+			//If we're in verbose mode, print this out
+			if(mode == REGEX_VERBOSE){
+				printf("Pattern continued/started with character: %c\n", ch);
+			}
+
 			//Advance the current index
 			current_index++;
 			//We are in the start of a match, so we'll save the end state
@@ -992,6 +1029,12 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 		
 		//Otherwise, we didn't find anything, so we need to reset
 		} else {
+			//Print out if we're in verbose mode
+			if(mode == REGEX_VERBOSE){
+				printf("No pattern found for character: %c\n", ch);
+			}
+
+
 			//Reset these two parameters to reset the search
 			match->match_start_idx = current_index;
 			match->match_end_idx = current_index;
