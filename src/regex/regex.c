@@ -958,9 +958,6 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 	//Advance the string pointer to be at the starting index the user asked for
 	char* match_string = string + starting_index;
 
-	//By default, we are not currently in a pattern
-	u_int8_t in_pattern = 0;
-
 	//By default, we haven't found anything
 	match->status = MATCH_NOT_FOUND;
 	//Initialize this to the starting index
@@ -974,28 +971,36 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 	DFA_state_t* current_state = start_state;
 
 	char ch;
+	//The current index for the search
+	u_int32_t current_index = starting_index;
 	//Scan through the string
 	while((ch = *match_string) != '\0'){
-	
-
-
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
-		//character does not =NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
-		if(current_state->transitions[ch] != NULL){
-			//If we end up in here, we are at least in the start of a match
-			match->status = MATCH_FOUND;
+		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
+		if(current_state->transitions[(u_int16_t)ch] != NULL){
+			//Advance the current index
+			current_index++;
+			//We are in the start of a match, so we'll save the end state
+			match->match_end_idx = current_index;
 
+			//Advance this up to be the next state
+			current_state = current_state->transitions[(u_int16_t)ch];
 		
 		//Otherwise, we didn't find anything, so we need to reset
 		} else {
+			//Reset these two parameters to reset the search
+			match->match_start_idx = current_index;
+			match->match_end_idx = current_index;
 
-			in_pattern = 0;
+			//We are now back in the start state
+			current_state = start_state;
 		}
-
-
 
 		//If the current state contains the accepting state, this is our base case
 		if(current_state->nfa_state_list.contains_accepting_state == 1){
+			//We've found the match
+			match->status = MATCH_FOUND;
+
 			if(mode == REGEX_VERBOSE){
 				printf("Match found!\n");
 				return;
@@ -1005,6 +1010,14 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 		//Push the pointer up
 		match_string++;
 	}
+
+
+	//If we end up here, that means that we ran off the end of the string and never found a match
+	//We'll set these flags and return if this is the case
+	match->match_end_idx = starting_index;
+	match->match_end_idx = starting_index;
+	match->status = MATCH_NOT_FOUND;
+	return;
 }
 
 
@@ -1014,10 +1027,10 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
  */
 regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode){
 	//Stack allocated match struct
-	regex_match_t match;
+	regex_match_t match_struct;
 
 	//Error mode by default
-	match.status = MATCH_ERR;
+	match_struct.status = MATCH_ERR;
 
 	//If we are given a bad regex 
 	if(regex.NFA == NULL || regex.state != REGEX_ERR){
@@ -1027,14 +1040,14 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 		}
 
 		//Pack in the values and return match.match_start = 0;
-		match.match_start_idx = 0;
-		match.match_end_idx = 0;
+		match_struct.match_start_idx = 0;
+		match_struct.match_end_idx = 0;
 
 		//We return this value so that the caller can know what the error was
-		match.status = MATCH_INV_INPUT;
+		match_struct.status = MATCH_INV_INPUT;
 
 		//Give the regex back
-		return match;
+		return match_struct;
 	}
 
 	//If we are given a bad string
@@ -1045,16 +1058,18 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 		}
 
 		//Pack in the values and return
-		match.match_start_idx = 0;
-		match.match_end_idx = 0;
-		match.status = MATCH_INV_INPUT;
-		return match;
+		match_struct.match_start_idx = 0;
+		match_struct.match_end_idx = 0;
+		match_struct.status = MATCH_INV_INPUT;
+		return match_struct;
 	}
 
+	//Attempt to match the string with the regex
+	match(&match_struct, &regex, string, starting_index, mode);
 
 
 	//Return the match struct
-	return match;
+	return match_struct;
 }
 
 
