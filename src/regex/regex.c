@@ -828,6 +828,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, u_int16_t num_states){
 	//We'll explicitly create the start state here
 	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 	dfa_start->transitions = (DFA_state_t**)calloc(sizeof(DFA_state_t*), 130);
+	dfa_start->nfa_state_list.states = NULL;
 
 	//Call the recursive helper method to do the rest for us
 	create_DFA_rec(dfa_start, nfa_start, num_states);
@@ -975,17 +976,31 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 	char ch;
 	//Scan through the string
 	while((ch = *match_string) != '\0'){
+	
+
+
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not =NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
 		if(current_state->transitions[ch] != NULL){
 			//If we end up in here, we are at least in the start of a match
 			match->status = MATCH_FOUND;
 
+		
+		//Otherwise, we didn't find anything, so we need to reset
+		} else {
+
+			in_pattern = 0;
 		}
 
 
 
-
+		//If the current state contains the accepting state, this is our base case
+		if(current_state->nfa_state_list.contains_accepting_state == 1){
+			if(mode == REGEX_VERBOSE){
+				printf("Match found!\n");
+				return;
+			}
+		}
 
 		//Push the pointer up
 		match_string++;
@@ -1048,7 +1063,8 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 
 /**
  * Recursively free all NFA states in that are pointed to. We should have no dangling states, so 
- * in theory, this should work
+ * in theory, this should work. We'll keep track of what the accepting state is because there is a chance
+ * that we could double free it, so we won't let the recursive function handle that
  */
 static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t** accepting_state){
 	//Base case
@@ -1090,12 +1106,14 @@ static void teardown_DFA_state(DFA_state_t* state){
 	}
 
 	//Recursively teardown every other state
-	for(u_int16_t i = 0; i < 128; i++){
+	for(u_int16_t i = 0; i < 130; i++){
 		teardown_DFA_state(state->transitions[i]);
 	}
 
 	//Free the nfa list
-	free(state->nfa_state_list.states);
+	if(state->nfa_state_list.states != NULL){
+		free(state->nfa_state_list.states);
+	}
 
 	//Free the transitions array
 	free(state->transitions);
@@ -1116,14 +1134,13 @@ void destroy_regex(regex_t regex){
 	//Once this function runs, we should have a reference to the accepting state that we can free
 	//TODO FIXME here
 
-	/*
+	//Prevent any double frees of the accepting state
 	if(accepting_state != NULL){
 		free(accepting_state);
 	}
-	*/
-
-//	teardown_DFA_state(regex.DFA);
-
+	
+	//Clean up the DFA
+	teardown_DFA_state(regex.DFA);
 }
 
 
