@@ -853,6 +853,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	regex_t regex;
 	//Set to NULL as a flag
 	regex.NFA = NULL;
+	regex.DFA = NULL;
 
 	//Just in case
 	if(pattern == NULL || strlen(pattern) == 0){
@@ -939,6 +940,9 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 			return regex;
 		}
 	}
+
+	//If it did work, we'll set everything to true
+	regex.state = REGEX_VALID;
 
 	//If the user request verbose mode, we'll display
 	if(mode == REGEX_VERBOSE){
@@ -1033,7 +1037,7 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 	match_struct.status = MATCH_ERR;
 
 	//If we are given a bad regex 
-	if(regex.NFA == NULL || regex.state != REGEX_ERR){
+	if(regex.DFA == NULL || regex.state == REGEX_ERR){
 		//Verbose mode
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: Attempt to use an invalid regex.\n");
