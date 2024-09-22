@@ -509,7 +509,7 @@ static void print_DFA(DFA_state_t* dfa){
 		return;
 	}
 
-	printf("{");
+	printf("States: {");
 
 	for(u_int16_t i = 0; i < dfa->nfa_state_list.length; i++){
 		printf("%c ", dfa->nfa_state_list.states[i]->opt);
@@ -518,7 +518,7 @@ static void print_DFA(DFA_state_t* dfa){
 	printf("}->");
 
 	for(u_int16_t i = 0; i < 130; i++){
-		if(dfa->transitions[i] == NULL){
+		if(dfa->transitions[i] != NULL){
 			print_DFA(dfa->transitions[i]);
 		}
 	}
