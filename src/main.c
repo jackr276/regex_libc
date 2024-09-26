@@ -21,5 +21,5 @@ int main(){
 		printf("Match found\n");
 	}
 
-	destroy_regex(tester_2);
+//	destroy_regex(tester_2);
 }
