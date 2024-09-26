@@ -842,12 +842,20 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 
 	//Recursively create the next DFA state for opt and next opt
 	if(nfa_state->opt != SPLIT){
+		//We should only create these if we don't have a split
 		create_DFA_rec(previous, nfa_state->next, num_states);
 		create_DFA_rec(previous, nfa_state->next_opt, num_states);
 	} else {
 		//TODO FIXME may add more
-		create_DFA_rec(previous, nfa_state->next, num_states);
-		create_DFA_rec(previous, nfa_state->next_opt, num_states);
+		if(nfa_state->next != NULL){
+			create_DFA_rec(previous, nfa_state->next->next, num_states);
+			create_DFA_rec(previous, nfa_state->next->next_opt, num_states);
+		}
+
+		if(nfa_state->next_opt != NULL){
+			create_DFA_rec(previous, nfa_state->next_opt->next, num_states);
+			create_DFA_rec(previous, nfa_state->next_opt->next_opt, num_states);
+		}
 
 	}
 
