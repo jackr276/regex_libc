@@ -835,8 +835,23 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 		return;
 	}
 
+	//Create the new DFA state
+	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
+
 	//Create the new DFA state from this NFA state
-	previous->transitions[(u_int16_t)(nfa_state->opt)] = create_DFA_state(nfa_state, num_states);
+	previous->transitions[(u_int16_t)(nfa_state->opt)] = new_state;
+
+
+	/*
+	for(u_int16_t i = 0; i < previous->nfa_state_list.length; i++){
+		if(previous->nfa_state_list.states[i] != NULL && previous->nfa_state_list.states[i]->opt != nfa_state->opt){
+			previous->transitions[(u_int16_t)(previous->nfa_state_list.states[i]->opt)] = new_state;
+		}
+	}
+	*/
+
+	
+
 	//Update the previous pointer
 	previous = previous->transitions[(u_int16_t)(nfa_state->opt)];
 
@@ -846,7 +861,8 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 		create_DFA_rec(previous, nfa_state->next, num_states);
 		create_DFA_rec(previous, nfa_state->next_opt, num_states);
 	} else {
-		//TODO FIXME may add more
+		//If we get here, we'll skip over the states that were already picked up by the split and go onto 
+		//the next
 		if(nfa_state->next != NULL){
 			create_DFA_rec(previous, nfa_state->next->next, num_states);
 			create_DFA_rec(previous, nfa_state->next->next_opt, num_states);
@@ -856,9 +872,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 			create_DFA_rec(previous, nfa_state->next_opt->next, num_states);
 			create_DFA_rec(previous, nfa_state->next_opt->next_opt, num_states);
 		}
-
 	}
-
 }
 
 
