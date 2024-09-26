@@ -841,8 +841,16 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	previous = previous->transitions[(u_int16_t)(nfa_state->opt)];
 
 	//Recursively create the next DFA state for opt and next opt
-	create_DFA_rec(previous, nfa_state->next, num_states);
-	create_DFA_rec(previous, nfa_state->next_opt, num_states);
+	if(nfa_state->opt != SPLIT){
+		create_DFA_rec(previous, nfa_state->next, num_states);
+		create_DFA_rec(previous, nfa_state->next_opt, num_states);
+	} else {
+		//TODO FIXME may add more
+		create_DFA_rec(previous, nfa_state->next, num_states);
+		create_DFA_rec(previous, nfa_state->next_opt, num_states);
+
+	}
+
 }
 
 
@@ -1034,7 +1042,6 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 				printf("No pattern found for character: %c\n", ch);
 			}
 
-
 			//Reset these two parameters to reset the search
 			match->match_start_idx = current_index;
 			match->match_end_idx = current_index;
@@ -1044,7 +1051,7 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 		}
 
 		//If the current state contains the accepting state, this is our base case
-		if(current_state->nfa_state_list.contains_accepting_state == 1){
+		if(current_state->transitions[ACCEPTING] != 0){
 			//We've found the match
 			match->status = MATCH_FOUND;
 
@@ -1194,7 +1201,6 @@ void destroy_regex(regex_t regex){
 
 	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)), &accepting_state);
 	//Once this function runs, we should have a reference to the accepting state that we can free
-	//TODO FIXME here
 
 	//Prevent any double frees of the accepting state
 	if(accepting_state != NULL){

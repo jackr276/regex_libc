@@ -9,13 +9,13 @@
 int main(){
 
 	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("a", REGEX_VERBOSE);
+	regex_t tester_2 = define_regular_expression("abcd", REGEX_VERBOSE);
 
-	//	char* string = "Match me";
-	//char* string2 = "I won't mAtch";
+	char* string = "bbabcd";
+	char* string2 = "I won't mAtch";
 
 	//Attempt to match the string starting at 0
-	//regex_match_t rgx = regex_match(tester_2, string, 0, REGEX_VERBOSE);
+	regex_match_t rgx = regex_match(tester_2, string, 0, REGEX_VERBOSE);
 
 	//if(rgx.status == MATCH_FOUND){
 	//	printf("Match found\n");
