@@ -9,9 +9,9 @@
 int main(){
 
 	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("abcd", REGEX_VERBOSE);
+	regex_t tester_2 = define_regular_expression("d?abcd", REGEX_VERBOSE);
 
-	char* string = "bbabcd";
+	char* string = "bbabcdbbbb";
 	char* string2 = "I won't mAtch";
 
 	//Attempt to match the string starting at 0
