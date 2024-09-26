@@ -1043,6 +1043,12 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 	u_int32_t current_index = starting_index;
 	//Scan through the string
 	while((ch = *match_string) != '\0'){
+		//If we have a split
+		if(current_state->transitions[SPLIT] != NULL){
+			printf("HERE\n");
+			current_state = current_state->transitions[SPLIT];
+		}
+
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
 		if(current_state->transitions[(u_int16_t)ch] != NULL){
