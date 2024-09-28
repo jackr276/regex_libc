@@ -838,29 +838,32 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	//Create the new DFA state
 	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
 
+	//Iterate over the entire NFA state list to "patch in" everything that we need here
+	for(u_int16_t i = 0; i < new_state->nfa_state_list.length; i++){
+
+		if(new_state->nfa_state_list.states[i] != NULL){
+			u_int16_t opt = new_state->nfa_state_list.states[i]->opt;
+
+			if(opt != SPLIT){
+				previous->transitions[opt] = new_state;
+			}
+		}
+	}
+
+
 
 	//If we don't have a split state we can just assign the transition as the state opt
-	if(nfa_state->opt != 0){
+	if(nfa_state->opt != SPLIT){
 		//Create the new DFA state from this NFA state
 		previous->transitions[(u_int16_t)(nfa_state->opt)] = new_state;
-	} else {
-		if(nfa_state->next != NULL){
-			previous->transitions[(u_int16_t)(nfa_state->next->opt)] = new_state;
-			previous = previous->transitions[(u_int16_t)(nfa_state->next->opt)];
-		}
-
-		if(nfa_state->next_opt != NULL){
-			previous->transitions[(u_int16_t)(nfa_state->next_opt->opt)] = new_state;
-		}
-
-	}
+	} 
 
 
 	//Recursively create the next DFA state for opt and next opt
 	if(nfa_state->opt != SPLIT){
 		//We should only create these if we don't have a split
-		create_DFA_rec(previous, nfa_state->next, num_states);
-		create_DFA_rec(previous, nfa_state->next_opt, num_states);
+		create_DFA_rec(new_state, nfa_state->next, num_states);
+		create_DFA_rec(new_state, nfa_state->next_opt, num_states);
 	} else {
 		//If we get here, we'll skip over the states that were already picked up by the split and go onto 
 		//the next
@@ -869,6 +872,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 			create_DFA_rec(previous, nfa_state->next->next_opt, num_states);
 		}
 
+		//Recursively create the states from next_opt
 		if(nfa_state->next_opt != NULL){
 			create_DFA_rec(previous, nfa_state->next_opt->next, num_states);
 			create_DFA_rec(previous, nfa_state->next_opt->next_opt, num_states);
