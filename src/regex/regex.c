@@ -835,15 +835,20 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 		return;
 	}
 
-	if(nfa_state->opt != SPLIT){
+
+	printf("Creating state for opt: %c\n", nfa_state->opt);
+
+
+	//We are hitting this only once, but we are repeating its values
+	if(nfa_state->opt == SPLIT){
 		printf("HERE\n");
 	}
 
 	//Create the new DFA state
 	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
 
-	
 	//Iterate over the entire NFA state list to "patch in" everything that we need here
+	//WORKS
 	for(u_int16_t i = 0; i < new_state->nfa_state_list.length; i++){
 		//We want everything in the previous state to point to the new state
 		if(new_state->nfa_state_list.states[i] != NULL){
@@ -851,12 +856,13 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 			u_int16_t opt = new_state->nfa_state_list.states[i]->opt;
 
 			//We don't want any non-characters polluting the array
-			if(opt != SPLIT){
+			if(opt != 0){
 				previous->transitions[opt] = new_state;
 			}
 		}
 	}
 	
+
 	//Recursively create the next DFA state for opt and next opt
 	if(nfa_state->opt != SPLIT){
 		//We should only create these if we don't have a split
