@@ -838,13 +838,11 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	//Create the new DFA state
 	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
 
+
 	//If we don't have a split state we can just assign the transition as the state opt
-	if(nfa_state->opt != 0 /*SPLIT*/){
+	if(nfa_state->opt != 0){
 		//Create the new DFA state from this NFA state
 		previous->transitions[(u_int16_t)(nfa_state->opt)] = new_state;
-		//Update the previous pointer
-		previous = previous->transitions[(u_int16_t)(nfa_state->opt)];
-
 	} else {
 		if(nfa_state->next != NULL){
 			previous->transitions[(u_int16_t)(nfa_state->next->opt)] = new_state;
@@ -854,6 +852,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 		if(nfa_state->next_opt != NULL){
 			previous->transitions[(u_int16_t)(nfa_state->next_opt->opt)] = new_state;
 		}
+
 	}
 
 
