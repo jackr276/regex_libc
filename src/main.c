@@ -9,7 +9,7 @@
 int main(){
 
 	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("a+b", REGEX_VERBOSE);
+	regex_t tester_2 = define_regular_expression("a|c", REGEX_VERBOSE);
 
 	char* string = "bbabcdbbbb";
 	char* string2 = "I won't mAtch";
@@ -18,7 +18,7 @@ int main(){
 	regex_match_t rgx = regex_match(tester_2, string, 0, REGEX_VERBOSE);
 
 	if(rgx.status == MATCH_FOUND){
-		printf("Match found\n");
+		printf("Match starts at index: %u and ends at index %u\n", rgx.match_start_idx, rgx.match_end_idx);
 	}
 
 	destroy_regex(tester_2);

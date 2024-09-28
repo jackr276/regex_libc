@@ -838,6 +838,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	//Create the new DFA state
 	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
 
+	
 	//Iterate over the entire NFA state list to "patch in" everything that we need here
 	for(u_int16_t i = 0; i < new_state->nfa_state_list.length; i++){
 
@@ -849,15 +850,16 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 			}
 		}
 	}
+	
 
 
-
+	/*
 	//If we don't have a split state we can just assign the transition as the state opt
 	if(nfa_state->opt != SPLIT){
 		//Create the new DFA state from this NFA state
 		previous->transitions[(u_int16_t)(nfa_state->opt)] = new_state;
 	} 
-
+	*/
 
 	//Recursively create the next DFA state for opt and next opt
 	if(nfa_state->opt != SPLIT){
@@ -1046,11 +1048,6 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 	u_int32_t current_index = starting_index;
 	//Scan through the string
 	while((ch = *match_string) != '\0'){
-		//If we have a split
-		if(current_state->transitions[SPLIT] != NULL){
-			printf("HERE\n");
-			current_state = current_state->transitions[SPLIT];
-		}
 
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
@@ -1201,27 +1198,31 @@ static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t** accepting_
  * Recursively free all DFA states that are pointed to. We should have no dangling states, so in theory,
  * this should work
  */
-static void teardown_DFA_state(DFA_state_t* state){
+static void teardown_DFA_state(DFA_state_t** state){
 	//Base case
-	if(state == NULL || state->transitions == NULL){
+	if(*state == NULL || (*state)->transitions == NULL){
 		return;
 	}
 
 	//Recursively teardown every other state
 	for(u_int16_t i = 0; i < 130; i++){
-		teardown_DFA_state(state->transitions[i]);
+		teardown_DFA_state(&((*state)->transitions[i]));
 	}
 
 	//Free the nfa list
-	if(state->nfa_state_list.states != NULL){
-		free(state->nfa_state_list.states);
+	if((*state)->nfa_state_list.states != NULL){
+		free((*state)->nfa_state_list.states);
 	}
 
 	//Free the transitions array
-	free(state->transitions);
+	if((*state)->transitions != NULL){
+		free((*state)->transitions);
+	}
 
 	//Free the state overall
-	free(state);
+	free(*state);
+
+	*state = NULL;
 }
 
 
@@ -1241,7 +1242,7 @@ void destroy_regex(regex_t regex){
 	}
 	
 	//Clean up the DFA
-	teardown_DFA_state(regex.DFA);
+	teardown_DFA_state((DFA_state_t**)&(regex.DFA));
 }
 
 
