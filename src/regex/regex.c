@@ -424,6 +424,7 @@ static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start, u_in
 		if(cursor->state != NULL){
 			//This fringe states next state should be the new start state
 			if(point_opt == 1){
+				printf("Setting state: %c to point to %c\n", cursor->state->opt, start->opt);
 				cursor->state->next = start;
 			} else {
 				cursor->state->next_opt = start;
@@ -473,6 +474,24 @@ static void destroy_fringe_list(fringe_states_t* list){
 		//Free the current transition_list_t
 		free(temp);
 	}
+}
+
+
+/**
+ * Print out a list of free states for debugging/verbose purposes
+ */
+static void print_fringe_states(fringe_states_t* list){
+	fringe_states_t* cursor = list;
+
+	printf("All states currently in fringe: ");
+
+	while(cursor != NULL){
+		printf("%c", cursor->state->opt);
+		cursor = cursor->next;
+	}
+
+	printf("\n");
+
 }
 
 
@@ -622,6 +641,11 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
+				//Print out the fringe states DEBUGGING STATEMENT
+				if(mode == REGEX_VERBOSE){
+					print_fringe_states(frag_1->fringe_states);
+				}
+
 				//Make all of the states in fragment_1 point to the beginning of the split 
 				//using their next_opt to allow for our "0 or more" functionality 
 				concatenate_states(frag_1->fringe_states, split, 1);
@@ -648,12 +672,18 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//This acts as our optional 0 or 1
 				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
+				//Print out the fringe states DEBUGGING STATEMENT
+				if(mode == REGEX_VERBOSE){
+					print_fringe_states(frag_1->fringe_states);
+				}
+
 				//Set all of the fringe states in frag_1 to point at  
 				concatenate_states(frag_1->fringe_states, split, 1);
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
-				push(stack, create_fragment(frag_1->start, init_list(split->next)));
+				//TODO PROBLEM IS HERE                                                                  WRONG
+				push(stack, create_fragment(frag_1->start, frag_1->fringe_states));
 			
 				//Free this pointer
 				free(frag_1);
