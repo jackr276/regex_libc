@@ -485,8 +485,11 @@ static void print_NFA(NFA_state_t* nfa){
 		return;
 	}
 
+	//Support printing of special characters split and accepting
 	if(nfa->opt == SPLIT){
 		printf("State -SPLIT->");
+	} else if(nfa->opt == ACCEPTING){
+		printf("State -ACCEPTING->");
 	} else {
 		printf("State -%c->", (u_int8_t)nfa->opt);
 	}
@@ -525,7 +528,9 @@ static void print_DFA(DFA_state_t* dfa){
 }
 
 
-
+/**
+ * Create an NFA from a postfix regular expression FIXME does not work for () combined with *, | or +
+ */
 static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
@@ -563,13 +568,19 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//of fragment 2
 				concatenate_states(frag_1->fringe_states, frag_2->start, 1);
 
+				//The fringe list of fragment 1 should be irrelevant now, so we can get rid of it
+				destroy_fringe_list(frag_1->fringe_states);
+
 				//Push a new fragment up where the start of frag_1 points is the start, and all of the fringe states
 				//are fragment 2's fringe states
 				push(stack, create_fragment(frag_1->start, frag_2->fringe_states));
 
-				//The fringe list of fragment 1 should be irrelevant now, so we can get rid of it
-				destroy_fringe_list(frag_1->fringe_states);
-				//However, we do still need the states in frag_2->fringe_states, so we'll leave those be
+				//However, we do still need the states in frag_2->fringe_states, so we'll leave those be	
+
+				//If we're in verbose mode, alert that a fragment was made
+				if(mode == REGEX_VERBOSE){
+					printf("Fragment created concatenating characters %c and %c\n", frag_2->start->opt, frag_1->start->opt);
+				}	
 
 				//We're done with these now, so we should free them
 				free(frag_1);
@@ -615,11 +626,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//using their next_opt to allow for our "0 or more" functionality 
 				concatenate_states(frag_1->fringe_states, split, 1);
 
+				//We should no longer need these now
+				destroy_fringe_list(frag_1->fringe_states);
+
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
 				push(stack, create_fragment(split, init_list(split->next)));
 
-				//We should no longer need thses now
-				destroy_fringe_list(frag_1->fringe_states);
 				//Free this pointer as it is no longer needed
 				free(frag_1);
 
@@ -705,6 +717,11 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack,  fragment);
+
+				//If we're in verbose mode, print out which character we processed
+				if(mode == REGEX_VERBOSE){
+					printf("Added fragment for character: %c\n", ch);
+				}
 
 				break;
 		}
@@ -1247,7 +1264,7 @@ void destroy_regex(regex_t regex){
 	}
 	
 	//Clean up the DFA
-	teardown_DFA_state((DFA_state_t**)&(regex.DFA));
+	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
 }
 
 
