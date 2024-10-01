@@ -699,10 +699,10 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
 				//the two fringe lists into one big one because the fringe is a combined fringe
-				fringe = concatenate_lists(frag_1->fringe_states, init_list(split->next));
+				fringe = concatenate_lists(frag_1->fringe_states, init_list(split->next_opt));
 				
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
-				push(stack, create_fragment(split, frag_1->fringe_states));
+				push(stack, create_fragment(split, fringe));
 
 				//We won't free the fragments list here because it still holds fringe data
 				//Free this pointer

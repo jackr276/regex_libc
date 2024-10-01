@@ -9,7 +9,7 @@
 int main(){
 
 	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("(abc)*(bda)+", REGEX_VERBOSE);
+	regex_t tester_2 = define_regular_expression("a(ab)?", REGEX_VERBOSE);
 
 	char* string = "bbabcdbbbb";
 	char* string2 = "I won't mAtch";
