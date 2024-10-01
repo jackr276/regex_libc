@@ -1290,7 +1290,8 @@ void destroy_regex(regex_t regex){
 	}
 	
 	//Clean up the DFA
-	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
+	//TODO FIXME
+//	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
 }
 
 
