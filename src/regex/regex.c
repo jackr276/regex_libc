@@ -650,11 +650,8 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//using their next_opt to allow for our "0 or more" functionality 
 				concatenate_states(frag_1->fringe_states, split, 1);
 
-				//We should no longer need these now
-				destroy_fringe_list(frag_1->fringe_states);
-
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
-				push(stack, create_fragment(split, init_list(split->next)));
+				push(stack, create_fragment(split, concatenate_lists(frag_1->fringe_states, init_list(split->next_opt))));
 
 				//Free this pointer as it is no longer needed
 				free(frag_1);
@@ -682,7 +679,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
-				//TODO PROBLEM IS HERE                                                                  WRONG
 				push(stack, create_fragment(frag_1->start, frag_1->fringe_states));
 			
 				//Free this pointer
@@ -706,7 +702,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				fringe = concatenate_lists(frag_1->fringe_states, init_list(split->next));
 				
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
-				push(stack, create_fragment(split, fringe));
+				push(stack, create_fragment(split, frag_1->fringe_states));
 
 				//We won't free the fragments list here because it still holds fringe data
 				//Free this pointer
