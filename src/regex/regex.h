@@ -6,8 +6,20 @@
 #ifndef REGEX_H
 #define REGEX_H
 
+#define ACCEPTING 128
+#define SPLIT 127 
+#define START 0
+#define REGEX_LEN 150
+#define CONCATENATION '`'
+
 #include <stdint.h>
 #include <sys/types.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/select.h>
+#include <sys/types.h>
+#include "../stack/stack.h"
 
 /**
  * The state that the regex is in. Used for an "errors as values" return approach

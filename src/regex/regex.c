@@ -6,18 +6,7 @@
  */
 
 #include "regex.h" 
-#include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/select.h>
-#include <sys/types.h>
-#include "../stack/stack.h"
-
-#define ACCEPTING 128
-#define SPLIT 127 
-#define START 0
-#define REGEX_LEN 150
-#define CONCATENATION '`'
 
 //Forward declare
 typedef struct NFA_state_t NFA_state_t;
@@ -424,7 +413,6 @@ static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start, u_in
 		if(cursor->state != NULL){
 			//This fringe states next state should be the new start state
 			if(point_opt == 1){
-				printf("Setting state: %c to point to %c\n", cursor->state->opt, start->opt);
 				cursor->state->next = start;
 			} else {
 				cursor->state->next_opt = start;
@@ -500,7 +488,6 @@ static void print_fringe_states(fringe_states_t* list){
  */
 static void print_NFA(NFA_state_t* nfa){
 	if(nfa == NULL){
-		printf("End NFA.\n");
 		return;
 	}
 
@@ -534,7 +521,7 @@ static void print_DFA(DFA_state_t* dfa){
 	printf("States: {");
 
 	for(u_int16_t i = 0; i < dfa->nfa_state_list.length; i++){
-		printf("%c ", dfa->nfa_state_list.states[i]->opt);
+		(dfa->nfa_state_list.states[i]->opt == ACCEPTING) ? printf("ACCEPTING") : printf("%c", dfa->nfa_state_list.states[i]->opt);
 	}
 
 	printf("}->");
@@ -598,7 +585,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//If we're in verbose mode, alert that a fragment was made
 				if(mode == REGEX_VERBOSE){
-					printf("Fragment created concatenating characters %c and %c\n", frag_2->start->opt, frag_1->start->opt);
+					printf("\nFragment created concatenating characters %c and %c\n", frag_2->start->opt, frag_1->start->opt);
 				}	
 
 				//We're done with these now, so we should free them
@@ -746,7 +733,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//If we're in verbose mode, print out which character we processed
 				if(mode == REGEX_VERBOSE){
-					printf("Added fragment for character: %c\n", ch);
+					printf("\nAdded fragment for character: %c\n", ch);
 				}
 
 				break;
@@ -1028,9 +1015,9 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 	//Display if desired
 	if(mode == REGEX_VERBOSE){
-		printf("NFA conversion succeeded.\n");
+		printf("\nNFA conversion succeeded.\n");
 		print_NFA(regex.NFA);
-		printf("\n");
+		printf("\n\nBeginning DFA Conversion.\n\n");
 	}
 
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
@@ -1291,7 +1278,7 @@ void destroy_regex(regex_t regex){
 	
 	//Clean up the DFA
 	//TODO FIXME
-//	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
+	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
 }
 
 
