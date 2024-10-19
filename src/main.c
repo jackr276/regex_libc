@@ -5,21 +5,74 @@
 
 #include "regex/regex.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
 
-int main(){
+#define ALL 0 
 
-	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("abcd+bc",REGEX_VERBOSE);
 
-	char* string = "bbaaaaaabcdbbbb";
+/**
+* Define a testing function for us here. "test_case" is what case we want to test, and fall through
+* let's us know that we want to test everything after that case
+*/
+void test_case_run(u_int8_t test_case, u_int8_t fall_through){
+	regex_t tester;
+	char* test_string;
 
-	//Attempt to match the string starting at 0
-	regex_match_t rgx = regex_match(tester_2, string, 0, REGEX_VERBOSE);
-
-	if(rgx.status == MATCH_FOUND){
-		printf("Match starts at index: %u and ends at index %u\n", rgx.match_start_idx, rgx.match_end_idx);
+	//If we're testing all cases then we will of course fall through
+	if(test_case == ALL){
+		fall_through = 1;
 	}
 
-	//Comment out to avoid seg faults FIXME
-	destroy_regex(tester_2);
+	switch(test_case){
+		case ALL:
+		//Case 1 tests 
+		case 1:
+			printf("Testing plain concatenation with regex: \"abcd\":\n");
+			// Define tester
+			tester = define_regular_expression("abcd", REGEX_VERBOSE);
+			//Define a test string
+			test_string = "aaabbbbbbabcdlmnop";
+			printf("TEST STRING: %s\n", test_string);
+			
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
+			
+		case 2:
+
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
+			
+		case 3:
+
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
+			
+		case 4:
+
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
+			
+		case 5:
+	
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
+				
+		//Added to avoid comptime errors, we shouldn't reach this
+		default:
+			return;
+	}
+}
+
+int main(int argc, char** argv){
 }
