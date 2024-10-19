@@ -500,12 +500,8 @@ static void print_NFA(NFA_state_t* nfa){
 		printf("State -%c->", (u_int8_t)nfa->opt);
 	}
 
-	if(nfa->opt == SPLIT){
-		print_NFA(nfa->next);
-		print_NFA(nfa->next_opt);
-	} else {
-		print_NFA(nfa->next);
-	}
+	print_NFA(nfa->next);
+	print_NFA(nfa->next_opt);
 }
 
 
@@ -653,20 +649,20 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_1 = pop(stack);
 
 				//We'll create a new state that acts as a split, going back to the the original state
-				//This acts as our optional 0 or 1
-				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+				//This acts as our optional 1 or more 
+				split = create_state(SPLIT, NULL, frag_1->start, num_states);
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
 					print_fringe_states(frag_1->fringe_states);
 				}
 
-				//Set all of the fringe states in frag_1 to point at  
+				//Set all of the fringe states in frag_1 to point at the split
 				concatenate_states(frag_1->fringe_states, split, 1);
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
-				push(stack, create_fragment(frag_1->start, frag_1->fringe_states));
+				push(stack, create_fragment(frag_1->start, concatenate_lists(frag_1->fringe_states, init_list(split->next))));
 			
 				//Free this pointer
 				free(frag_1);
