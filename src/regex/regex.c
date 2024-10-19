@@ -7,6 +7,7 @@
 
 #include "regex.h" 
 #include <stdio.h>
+#include <string.h>
 
 //Forward declare
 typedef struct NFA_state_t NFA_state_t;
@@ -68,7 +69,7 @@ struct NFA_fragement_t {
  * NFA states. This struct will be used for this purpose
  */
 struct NFA_state_list_t {
-	NFA_state_t** states;
+	NFA_state_t* states[130];
 	u_int16_t length;
 	//Does this list contain an accepting state?
 	u_int8_t contains_accepting_state;
@@ -828,8 +829,8 @@ static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
  * states we could possibly have in one of our DFA state lists
  */
 static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state_list, u_int16_t num_states){
-	//Allocate list space. At most, all NFA states could be reachable by this state, which is why we calloc with num_states
-	state_list->states = (NFA_state_t**)calloc(num_states, sizeof(NFA_state_t*));
+	//0 out the entire array
+	memset(state_list->states, 0, 130*sizeof(NFA_state_t*));
 
 	//Currently there's nothing, so we'll set this to 0
 	state_list->length = 0;
@@ -923,7 +924,6 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, u_int16_t num_states){
 	//We'll explicitly create the start state here
 	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
-	dfa_start->nfa_state_list.states = NULL;
 
 	//Call the recursive helper method to do the rest for us
 	create_DFA_rec(dfa_start, nfa_start, num_states);
@@ -1024,7 +1024,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	//regex.DFA = create_DFA(regex.NFA, mode);
+	regex.DFA = create_DFA(regex.NFA, mode);
 
 	//If it didn't work
 	if(regex.DFA == NULL){
@@ -1243,11 +1243,6 @@ static void teardown_DFA_state(DFA_state_t** state){
 	//Recursively teardown every other state
 	for(u_int16_t i = 0; i < 130; i++){
 		teardown_DFA_state(&((*state)->transitions[i]));
-	}
-
-	//Free the nfa list
-	if((*state)->nfa_state_list.states != NULL){
-		free((*state)->nfa_state_list.states);
 	}
 
 	//Free the state overall
