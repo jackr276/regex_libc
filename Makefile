@@ -16,7 +16,12 @@ regex_debug:
 
 test:
 	chmod +x $(OUT_DIR)/regex_test
-	$(OUT_DIR)/regex_test
+	$(OUT_DIR)/regex_test 1 
+
+test_all:
+	chmod +x $(OUT_DIR)/regex_test
+	# No args = all
+	$(OUT_DIR)/regex_test 
 
 clean:
 	rm -r $(OUT_DIR)/*

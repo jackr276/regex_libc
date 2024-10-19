@@ -26,6 +26,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 
 	switch(test_case){
 		case ALL:
+			printf("Running ALL test cases:\n\n");
 		//Case 1 tests 
 		case 1:
 			printf("Testing plain concatenation with regex: \"abcd\":\n");
@@ -75,4 +76,14 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 }
 
 int main(int argc, char** argv){
+	u_int8_t argument;
+
+	if(argc == 2 && (argument = atoi(argv[1]) != 0)){
+		test_case_run(argument, 0);
+	}
+	
+	if(argc == 1){
+		test_case_run(ALL, 1);
+	}
+
 }
