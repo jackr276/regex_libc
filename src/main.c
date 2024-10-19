@@ -9,7 +9,7 @@
 int main(){
 
 	//TODO tester causes a bug when it should not
-	regex_t tester_2 = define_regular_expression("abcdbc",REGEX_VERBOSE);
+	regex_t tester_2 = define_regular_expression("abcd+bc",REGEX_VERBOSE);
 
 	char* string = "bbaaaaaabcdbbbb";
 

@@ -668,13 +668,13 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				}
 
 				//Set all of the fringe states in frag_1 to point at the split
-				concatenate_states(frag_1->fringe_states, split, 0);
+				concatenate_states(frag_1->fringe_states, split, 1);
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
 				//THIS is the problem here, we can't have this guy point to fragment->start. It has to point to the immediately preceeding
 				//state
-				push(stack, create_fragment(frag_1->start, frag_1->fringe_states));
+				push(stack, create_fragment(frag_1->start, concatenate_lists(frag_1->fringe_states, init_list(split->next_opt))));
 
 				//Free this pointer
 				free(frag_1);
