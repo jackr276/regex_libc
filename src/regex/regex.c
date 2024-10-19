@@ -24,6 +24,9 @@ typedef struct DFA_state_t DFA_state_t;
  * If opt = ACCEPTING, we have an accepting state
  */
 struct NFA_state_t {
+	//Was this state visited?
+	u_int8_t visited;
+	//The char that we hold
 	u_int16_t opt;
 	//The default next 
 	NFA_state_t* next;
@@ -81,7 +84,7 @@ struct DFA_state_t {
 	NFA_state_list_t nfa_state_list;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
-	DFA_state_t** transitions;
+	DFA_state_t* transitions[130];
 };
 
 
@@ -350,6 +353,7 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
  	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
 
 	//Assign these values
+	state->visited = 0;
 	state->opt = opt;
 	state->next = next;
 	state->next_opt = next_opt;
@@ -500,8 +504,12 @@ static void print_NFA(NFA_state_t* nfa){
 		printf("State -%c->", (u_int8_t)nfa->opt);
 	}
 
-	print_NFA(nfa->next);
-	print_NFA(nfa->next_opt);
+	if(nfa->opt == SPLIT){
+		print_NFA(nfa->next);
+		print_NFA(nfa->next_opt);
+	} else {
+		print_NFA(nfa->next);
+	}
 }
 
 
@@ -517,7 +525,7 @@ static void print_DFA(DFA_state_t* dfa){
 	printf("States: {");
 
 	for(u_int16_t i = 0; i < dfa->nfa_state_list.length; i++){
-		(dfa->nfa_state_list.states[i]->opt == ACCEPTING) ? printf("ACCEPTING") : printf("%c", dfa->nfa_state_list.states[i]->opt);
+		(dfa->nfa_state_list.states[i]->opt == ACCEPTING) ? printf("ACCEPTING") : printf("%c, ", dfa->nfa_state_list.states[i]->opt);
 	}
 
 	printf("}->");
@@ -602,7 +610,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				split = create_state(SPLIT, frag_1->start,  frag_2->start, num_states);
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
-				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states,frag_2->fringe_states);
+				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
 
 				//Push the newly made state and its transition list onto the stack
 				push(stack, create_fragment(split,  combined));
@@ -650,7 +658,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
-				split = create_state(SPLIT, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT, frag_1->start, NULL, num_states);
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -658,12 +666,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				}
 
 				//Set all of the fringe states in frag_1 to point at the split
-				concatenate_states(frag_1->fringe_states, split, 1);
+				concatenate_states(frag_1->fringe_states, split, 0);
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
-				push(stack, create_fragment(frag_1->start, concatenate_lists(frag_1->fringe_states, init_list(split->next))));
-			
+				push(stack, create_fragment(frag_1->start, init_list(split->next)));
+
 				//Free this pointer
 				free(frag_1);
 
@@ -840,12 +848,9 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
 	//Allocate a DFA state
 	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
-	//Allocate a list of transitions that will tell us what the next state(s) are
-	dfa_state->transitions = (DFA_state_t**)calloc(130, sizeof(DFA_state_t*));
-
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
 	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list), num_states);
-	
+
 	//Return a pointer to our state
 	return dfa_state;
 }
@@ -861,9 +866,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 		return;
 	}
 
-
 	printf("Creating state for opt: %c\n", nfa_state->opt);
-
 
 	//We are hitting this only once, but we are repeating its values
 	if(nfa_state->opt == SPLIT){
@@ -917,7 +920,6 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, u_int16_t num_states){
 	//We'll explicitly create the start state here
 	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
-	dfa_start->transitions = (DFA_state_t**)calloc(sizeof(DFA_state_t*), 130);
 	dfa_start->nfa_state_list.states = NULL;
 
 	//Call the recursive helper method to do the rest for us
@@ -1019,7 +1021,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex.DFA = create_DFA(regex.NFA, mode);
+	//regex.DFA = create_DFA(regex.NFA, mode);
 
 	//If it didn't work
 	if(regex.DFA == NULL){
@@ -1231,7 +1233,7 @@ static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t** accepting_
  */
 static void teardown_DFA_state(DFA_state_t** state){
 	//Base case
-	if(*state == NULL || (*state)->transitions == NULL){
+	if(*state == NULL){
 		return;
 	}
 
@@ -1243,11 +1245,6 @@ static void teardown_DFA_state(DFA_state_t** state){
 	//Free the nfa list
 	if((*state)->nfa_state_list.states != NULL){
 		free((*state)->nfa_state_list.states);
-	}
-
-	//Free the transitions array
-	if((*state)->transitions != NULL){
-		free((*state)->transitions);
 	}
 
 	//Free the state overall
@@ -1274,7 +1271,7 @@ void destroy_regex(regex_t regex){
 	
 	//Clean up the DFA
 	//TODO FIXME
-	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
+	//teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
 }
 
 
