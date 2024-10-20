@@ -12,7 +12,7 @@ regex_test:
 	$(CC) $(CFLAGS) ./src/regex_testing.c $(INC) -o $(OUT_DIR)/regex_test
 
 regex_debug:
-	$(CC) $(CFLAGS) $(DEBUG_FLAG) ./src/main.c $(INC) -o $(OUT_DIR)/regex_debug
+	$(CC) $(CFLAGS) $(DEBUG_FLAG) ./src/regex_testing.c $(INC) -o $(OUT_DIR)/regex_debug
 
 test:
 	chmod +x $(OUT_DIR)/regex_test

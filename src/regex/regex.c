@@ -829,9 +829,6 @@ static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
  * states we could possibly have in one of our DFA state lists
  */
 static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state_list, u_int16_t num_states){
-	//0 out the entire array
-	memset(state_list->states, 0, 130*sizeof(NFA_state_t*));
-
 	//Currently there's nothing, so we'll set this to 0
 	state_list->length = 0;
 
@@ -852,6 +849,12 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
 	//Allocate a DFA state
 	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
+	//0 out the entire array of DFA transitions as well
+	memset(dfa_state->transitions, 0, 130*sizeof(DFA_state_t*));
+
+	//0 out the entire array of NFA states
+	memset(dfa_state->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
+
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
 	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list), num_states);
 
@@ -865,17 +868,16 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
  */
 static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int16_t num_states){
 	//Base case, we're done here
-	if(nfa_state == NULL){
+	if(nfa_state == NULL || nfa_state->visited == 1){
 		//"dead end" so to speak
 		return;
 	}
 
-	printf("Creating state for opt: %c\n", nfa_state->opt);
+	//We have visited this guy already now
+	nfa_state->visited = 1;
 
-	//We are hitting this only once, but we are repeating its values
-	if(nfa_state->opt == SPLIT){
-		printf("HERE\n");
-	}
+	//TODO make him regex_verbose only
+	printf("Creating state for opt: %c\n", nfa_state->opt);
 
 	//Create the new DFA state
 	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
@@ -894,7 +896,6 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 			}
 		}
 	}
-	
 
 	//Recursively create the next DFA state for opt and next opt
 	if(nfa_state->opt != SPLIT){
@@ -1268,7 +1269,6 @@ void destroy_regex(regex_t regex){
 	}
 	
 	//Clean up the DFA
-	//TODO FIXME
 	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
 }
 
