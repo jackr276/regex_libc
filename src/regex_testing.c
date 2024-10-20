@@ -4,6 +4,7 @@
  */
 
 #include "regex/regex.h"
+#include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -74,6 +75,20 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			}
 			
 		case 3:
+			printf("Testing concatenation with | operator:\n");
+
+			//Define the regex
+			tester = define_regular_expression("ab(c|d)d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aaabbbbbbabcdlmnop";
+			printf("TEST STRING: %s\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
 
 			//Break out if we don't fall through
 			if(fall_through == 0){
@@ -101,9 +116,9 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 }
 
 int main(int argc, char** argv){
-	u_int8_t argument;
+	u_int32_t argument;
 
-	if(argc == 2 && (argument = atoi(argv[1]) != 0)){
+	if(argc == 2 && (sscanf(argv[1], "%u", &argument) > 0)){
 		test_case_run(argument, 0);
 	}
 	
