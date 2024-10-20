@@ -24,24 +24,49 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 		fall_through = 1;
 	}
 
+	//Go through all of our test cases. Designed so that we can always add more
 	switch(test_case){
+		//Use fall through to run all of these
 		case ALL:
 			printf("Running ALL test cases:\n\n");
-		//Case 1 tests 
+		//Case 1 tests regular concatenation 
 		case 1:
 			printf("Testing plain concatenation with regex: \"abcd\":\n");
+
 			// Define tester
 			tester = define_regular_expression("abcd", REGEX_VERBOSE);
+
 			//Define a test string
-			test_string = "aaabbbbbbabcdlmnop";
+			test_string = "aaa  b-b#bbbbabcdlmnop";
 			printf("TEST STRING: %s\n", test_string);
 			
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
 			//Break out if we don't fall through
 			if(fall_through == 0){
 				break;
 			}
 			
+		//Case 2 tests the 0 or 1 ? operator
 		case 2:
+			printf("Testing concatenation with ? operator:\n");
+
+			//Define the regex
+			tester = define_regular_expression("ab(c?)d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aaabbbbbbabcdlmnop";
+			printf("TEST STRING: %s\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
 
 			//Break out if we don't fall through
 			if(fall_through == 0){

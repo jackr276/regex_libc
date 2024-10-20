@@ -9,7 +9,7 @@ DEBUG_FLAG = -g
 OUT_DIR = ./out
 
 regex_test: 
-	$(CC) $(CFLAGS) ./src/main.c $(INC) -o $(OUT_DIR)/regex_test
+	$(CC) $(CFLAGS) ./src/regex_testing.c $(INC) -o $(OUT_DIR)/regex_test
 
 regex_debug:
 	$(CC) $(CFLAGS) $(DEBUG_FLAG) ./src/main.c $(INC) -o $(OUT_DIR)/regex_debug
