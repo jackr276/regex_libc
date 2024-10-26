@@ -115,7 +115,22 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 				break;
 			}
 			
+		//Case 5 tests kleene star
 		case 5:
+			printf("Testing the * operator:\n");
+
+			//Initialization
+			tester = define_regular_expression("ab*c", REGEX_VERBOSE);
+
+			//Define the test string
+			test_string = "aaabbbbbbc";
+			printf("TEST STRING: %s\n", test_string);
+			
+			//Test matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+			
+			//Destroy
+			destroy_regex(tester);
 	
 			//Break out if we don't fall through
 			if(fall_through == 0){

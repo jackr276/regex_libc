@@ -507,6 +507,7 @@ static void print_NFA(NFA_state_t* nfa){
 
 	if(nfa->opt == SPLIT){
 		print_NFA(nfa->next);
+		printf("\n");
 		print_NFA(nfa->next_opt);
 	} else {
 		print_NFA(nfa->next);
@@ -810,16 +811,20 @@ static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
 		get_reachable_rec(list, start->next_opt);
 	}
 
-	//Add this state to the list of NFA states
-	list->states[list->length] = start;
+	//If this state is not a split we can add it in
+	if(start->opt != SPLIT){ 
+		//Add this state to the list of NFA states
+		list->states[list->length] = start;
+
+		//Increment the length
+		list->length++;
+	}
 
 	//If we find an accepting state, then set this flag. This will speed up our match function
 	if(start->opt == ACCEPTING){
 		list->contains_accepting_state = 1;
 	}
 
-	//Increment the length
-	list->length++;
 }
 
 
@@ -876,7 +881,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 	//We have visited this guy already now
 	nfa_state->visited = 1;
 
-	//TODO make him regex_verbose only
+	//Only print in verbose mode
 	if(mode == REGEX_VERBOSE){
 		printf("Creating state for opt: %c\n", nfa_state->opt);
 	}
@@ -885,7 +890,6 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 	DFA_state_t* new_state = create_DFA_state(nfa_state);
 
 	//Iterate over the entire NFA state list to "patch in" everything that we need here
-	//WORKS
 	for(u_int16_t i = 0; i < new_state->nfa_state_list.length; i++){
 		//We want everything in the previous state to point to the new state
 		if(new_state->nfa_state_list.states[i] != NULL){
@@ -897,6 +901,18 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 				previous->transitions[opt] = new_state;
 			}
 		}
+	}
+	
+	if(nfa_state->opt == SPLIT){
+		create_DFA_rec(new_state, nfa_state->next, mode);
+		create_DFA_rec(new_state, nfa_state->next_opt, mode);
+	} else {
+		create_DFA_rec(new_state, nfa_state->next,  mode);
+	}
+	
+	/*
+	if(nfa_state->next_opt != NULL){
+		create_DFA_rec(, NFA_state_t *nfa_state, regex_mode_t mode)
 	}
 
 	//Recursively create the next DFA state for opt and next opt
@@ -918,6 +934,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 			create_DFA_rec(previous, nfa_state->next_opt->next_opt, mode);
 		}
 	}
+	*/
 }
 
 
@@ -927,6 +944,12 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	//We'll explicitly create the start state here
 	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
+
+	//0 out the entire array of DFA transitions as well
+	memset(dfa_start->transitions, 0, 130*sizeof(DFA_state_t*));
+
+	//0 out the entire array of NFA states
+	memset(dfa_start->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
 
 	//Call the recursive helper method to do the rest for us
 	create_DFA_rec(dfa_start, nfa_start, mode);
