@@ -16,6 +16,7 @@ regex_debug:
 
 test:
 	chmod +x $(OUT_DIR)/regex_test
+	#All currently passing make sure that we still pass
 	$(OUT_DIR)/regex_test 1 
 	$(OUT_DIR)/regex_test 3
 

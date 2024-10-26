@@ -828,7 +828,7 @@ static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
  * list will be stored in "list". "num_states" is the number of DFA states, which should in theory be the maximum number of 
  * states we could possibly have in one of our DFA state lists
  */
-static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state_list, u_int16_t num_states){
+static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state_list){
 	//Currently there's nothing, so we'll set this to 0
 	state_list->length = 0;
 
@@ -845,7 +845,7 @@ static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state
  * that are reachable at this state. This DFA state is dynamically allocated, and as such will need
  * to be destroyed at some point
  */
-static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_states){
+static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 	//Allocate a DFA state
 	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
@@ -856,7 +856,7 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
 	memset(dfa_state->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
 
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
-	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list), num_states);
+	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list));
 
 	//Return a pointer to our state
 	return dfa_state;
@@ -866,7 +866,7 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, u_int16_t num_state
 /**
  * A recursive helper function for DFA creation
  */
-static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int16_t num_states){
+static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_mode_t mode){
 	//Base case, we're done here
 	if(nfa_state == NULL || nfa_state->visited == 1){
 		//"dead end" so to speak
@@ -877,10 +877,12 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	nfa_state->visited = 1;
 
 	//TODO make him regex_verbose only
-	printf("Creating state for opt: %c\n", nfa_state->opt);
+	if(mode == REGEX_VERBOSE){
+		printf("Creating state for opt: %c\n", nfa_state->opt);
+	}
 
 	//Create the new DFA state
-	DFA_state_t* new_state = create_DFA_state(nfa_state, num_states);
+	DFA_state_t* new_state = create_DFA_state(nfa_state);
 
 	//Iterate over the entire NFA state list to "patch in" everything that we need here
 	//WORKS
@@ -900,20 +902,20 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 	//Recursively create the next DFA state for opt and next opt
 	if(nfa_state->opt != SPLIT){
 		//We should only create these if we don't have a split
-		create_DFA_rec(new_state, nfa_state->next, num_states);
-		create_DFA_rec(new_state, nfa_state->next_opt, num_states);
+		create_DFA_rec(new_state, nfa_state->next, mode);
+		create_DFA_rec(new_state, nfa_state->next_opt, mode);
 	} else {
 		//If we get here, we'll skip over the states that were already picked up by the split and go onto 
 		//the next
 		if(nfa_state->next != NULL){
-			create_DFA_rec(previous, nfa_state->next->next, num_states);
-			create_DFA_rec(previous, nfa_state->next->next_opt, num_states);
+			create_DFA_rec(previous, nfa_state->next->next, mode);
+			create_DFA_rec(previous, nfa_state->next->next_opt, mode);
 		}
 
 		//Recursively create the states from next_opt
 		if(nfa_state->next_opt != NULL){
-			create_DFA_rec(previous, nfa_state->next_opt->next, num_states);
-			create_DFA_rec(previous, nfa_state->next_opt->next_opt, num_states);
+			create_DFA_rec(previous, nfa_state->next_opt->next, mode);
+			create_DFA_rec(previous, nfa_state->next_opt->next_opt, mode);
 		}
 	}
 }
@@ -922,12 +924,12 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, u_int1
 /**
  * Translate an NFA into an equivalent DFA
  */
-static DFA_state_t* create_DFA(NFA_state_t* nfa_start, u_int16_t num_states){
+static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	//We'll explicitly create the start state here
 	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
 	//Call the recursive helper method to do the rest for us
-	create_DFA_rec(dfa_start, nfa_start, num_states);
+	create_DFA_rec(dfa_start, nfa_start, mode);
 
 	//Return a pointer to the start state
 	return dfa_start;
