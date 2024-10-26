@@ -17,6 +17,7 @@ regex_debug:
 test:
 	chmod +x $(OUT_DIR)/regex_test
 	$(OUT_DIR)/regex_test 1 
+	$(OUT_DIR)/regex_test 3
 
 test_all:
 	chmod +x $(OUT_DIR)/regex_test

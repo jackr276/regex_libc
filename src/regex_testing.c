@@ -74,7 +74,26 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 				break;
 			}
 			
+		//Case 3 tests using the escape character ~
 		case 3:
+			printf("Testing the explicit escape character ~:\n");
+
+			test_string = "aaaaaaab(cd)a";
+			//Define the regex
+			tester = define_regular_expression("ab~(cd~)a", REGEX_VERBOSE);
+
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+			
+			//Ensure that this works
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
+			
+		case 4:
 			printf("Testing concatenation with | operator:\n");
 
 			//Define the regex
@@ -90,12 +109,6 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Destroy the regex
 			destroy_regex(tester);
 
-			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
-			
-		case 4:
 
 			//Break out if we don't fall through
 			if(fall_through == 0){
