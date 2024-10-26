@@ -403,7 +403,7 @@ static fringe_states_t* init_list(NFA_state_t* state){
 
 
 /**
- * Path the list of states contained in the arrow_list out to point to the start state
+ * Make the list of states contained in the arrow_list out to point to the start state
  * of the next fragement "start"
  *
  * point_opt will make use of next if 1, next_opt if 0
@@ -691,11 +691,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
 				//state. This allows for a "zero or one" function
-				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
+				split = create_state(SPLIT, NULL, frag_1->start, num_states);
 
 				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
 				//the two fringe lists into one big one because the fringe is a combined fringe
-				fringe = concatenate_lists(frag_1->fringe_states, init_list(split->next_opt));
+				fringe = concatenate_lists(frag_1->fringe_states, init_list(split));
 				
 				//Create a new fragment that starts at the split, and represents this whole structure. We also need to chain the lists together to keep everything connected
 				push(stack, create_fragment(split, fringe));
@@ -791,7 +792,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 /* ================================================ End NFA Methods ================================================ */
 
 
-/* ================================================== DFA Methods ================================================ */
+/* ================================================== DFA Methods ================================================== */
 
 
 /**
@@ -1169,7 +1170,6 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 
 /**
  * The public facing match method that the user will call when attempting to pattern match
- * 
  */
 regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode){
 	//Stack allocated match struct
