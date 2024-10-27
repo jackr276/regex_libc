@@ -407,6 +407,8 @@ static fringe_states_t* init_list(NFA_state_t* state){
  * of the next fragement "start"
  *
  * point_opt will make use of next if 1, next_opt if 0
+ * NOTE: we really should never use next_opt UNLESS we are a split state, in which case we never even
+ * get here
  */
 static void concatenate_states(fringe_states_t* fringe, NFA_state_t* start, u_int8_t point_opt){
 	//A cursor so we don't affect the original pointer
@@ -492,8 +494,12 @@ static void print_fringe_states(fringe_states_t* list){
  * Ability to print out an NFA for debug purposes
  */
 static void print_NFA(NFA_state_t* nfa){
-	if(nfa == NULL){
+	if(nfa == NULL || nfa->visited == 2){
 		return;
+	}
+
+	if(nfa->opt != ACCEPTING){
+		nfa->visited = 2;
 	}
 
 	//Support printing of special characters split and accepting
@@ -632,7 +638,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_1 = pop(stack);
 
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
-				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+				split = create_state(SPLIT, NULL, frag_1->start, num_states);
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -644,7 +650,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				concatenate_states(frag_1->fringe_states, split, 1);
 
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
-				push(stack, create_fragment(split, concatenate_lists(frag_1->fringe_states, init_list(split->next_opt))));
+				push(stack, create_fragment(split, init_list(split)));
 
 				//Free this pointer as it is no longer needed
 				free(frag_1);
@@ -661,7 +667,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
-				split = create_state(SPLIT, frag_1->start, NULL, num_states);
+				split = create_state(SPLIT, NULL, frag_1->start, num_states);
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -675,7 +681,8 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
 				//THIS is the problem here, we can't have this guy point to fragment->start. It has to point to the immediately preceeding
 				//state
-				push(stack, create_fragment(frag_1->start, concatenate_lists(frag_1->fringe_states, init_list(split->next_opt))));
+				//push(stack, create_fragment(frag_1->start, concatenate_lists(frag_1->fringe_states, init_list(split))));
+				push(stack, create_fragment(frag_1->start, init_list(split)));
 
 				//Free this pointer
 				free(frag_1);
