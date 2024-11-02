@@ -65,6 +65,13 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
+			//Define a test string
+			test_string = "aaabbbbbbabdlmnop";
+			printf("TEST STRING: %s\n", test_string);
+	
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+	
 			//Destroy the regex
 			destroy_regex(tester);
 
@@ -157,6 +164,27 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 				break;
 			}
 		
+			
+		//Case 6 tests positive closure
+		case 7:
+			printf("Testing the * operator alone:\n");
+			
+			//Initialization
+			tester = define_regular_expression("a*",REGEX_VERBOSE);
+		
+			//Define a test string
+			test_string = "aaabbbbcd";
+
+			//Test the matching, we should get one here
+			regex_match(tester, test_string, 0,  REGEX_VERBOSE);
+			
+			//Destroy 
+			destroy_regex(tester);
+		
+			//Break out if we don't fall through
+			if(fall_through == 0){
+				break;
+			}
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:

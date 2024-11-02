@@ -501,19 +501,21 @@ static void print_NFA(NFA_state_t* nfa){
 	}
 
 	if(nfa->opt != ACCEPTING){
-	//	nfa->visited = 2;
+		//nfa->visited = 2;
 	}
 
 	//Support printing of special characters split and accepting
-	if(nfa->opt == SPLIT){
-		printf("State -SPLIT->");
+	if(nfa->opt == SPLIT_T1){
+		printf("State -SPLIT_T1->");
+	} else if(nfa->opt == SPLIT_T2){
+		printf("State -SPLIT_T2->");
 	} else if(nfa->opt == ACCEPTING){
 		printf("State -ACCEPTING->");
 	} else {
 		printf("State -%c->", (u_int8_t)nfa->opt);
 	}
 
-	if(nfa->opt == SPLIT){
+	if(nfa->opt == SPLIT_T1){
 		print_NFA(nfa->next);
 		printf("\n");
 		print_NFA(nfa->next_opt);
@@ -617,7 +619,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
-				split = create_state(SPLIT, frag_1->start,  frag_2->start, num_states);
+				split = create_state(SPLIT_T1, frag_1->start,  frag_2->start, num_states);
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
@@ -640,7 +642,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_1 = pop(stack);
 
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
-				split = create_state(SPLIT, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_T2, NULL, frag_1->start, num_states);
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -669,7 +671,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
-				split = create_state(SPLIT, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_T2, NULL, frag_1->start, num_states);
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -701,7 +703,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
 				//state. This allows for a "zero or one" function
 				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
-				split = create_state(SPLIT, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_T1, NULL, frag_1->start, num_states);
 
 				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
 				//the two fringe lists into one big one because the fringe is a combined fringe
@@ -808,34 +810,34 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
  * Follow all of the arrows that we have and recursively build a DFA state that is itself
  * a list of all the reachable NFA states
  */
-static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
+static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	//Base case
 	if(start == NULL || list == NULL || start->visited == 1){
 		return;
 	}
 
 	//We have a split, so follow the split recursively
-	if(start->opt == SPLIT){
-		//Recursively add these 2 branches as well. This is how we convert from an NFA into a DFA
-		get_reachable_rec(list, start->next);
-		get_reachable_rec(list, start->next_opt);
-	}
-
-	//If this state is not a split we can add it in
-	if(start->opt != SPLIT){ 
+	if(start->opt == SPLIT_T1){
+		//If our next guy is a split, go forward
+		if(start->next != NULL && start->next->opt == SPLIT_T1){
+			get_reachable_rec(start->next, list);
+		} else {
+			list->states[list->length] = start->next;
+			list->states[list->length + 1] = start->next_opt;
+			list->length += 2;
+		}
+	} else {
 		//Add this state to the list of NFA states
 		list->states[list->length] = start;
 
 		//Increment the length
 		list->length++;
 	}
-
+	
 	//If we find an accepting state, then set this flag. This will speed up our match function
 	if(start->opt == ACCEPTING){
 		list->contains_accepting_state = 1;
 	}
-
-//	start->visited = 1;
 }
 
 
@@ -852,7 +854,7 @@ static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state
 	state_list->contains_accepting_state = 0;
 
 	//Begin our conversion by converting the start state given here into a DFA state
-	get_reachable_rec(state_list, start);
+	get_reachable_rec(start, state_list);
 }
 
 

@@ -6,8 +6,11 @@
 #ifndef REGEX_H
 #define REGEX_H
 
-#define ACCEPTING 128
-#define SPLIT 127 
+#define ACCEPTING 129
+//Split_T1 will never point back to itself
+#define SPLIT_T1 127 
+//Split T2 will point back to itself
+#define SPLIT_T2 128 
 #define START 0
 #define REGEX_LEN 150
 #define CONCATENATION '`'
