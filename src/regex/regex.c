@@ -26,6 +26,8 @@ typedef struct DFA_state_t DFA_state_t;
  */
 struct NFA_state_t {
 	//Was this state visited?
+	//0 - default
+	//1 - visited by dfa constructor
 	u_int8_t visited;
 	//The char that we hold
 	u_int16_t opt;
@@ -499,7 +501,7 @@ static void print_NFA(NFA_state_t* nfa){
 	}
 
 	if(nfa->opt != ACCEPTING){
-		nfa->visited = 2;
+	//	nfa->visited = 2;
 	}
 
 	//Support printing of special characters split and accepting
@@ -808,7 +810,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
  */
 static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
 	//Base case
-	if(start == NULL || list == NULL){
+	if(start == NULL || list == NULL || start->visited == 1){
 		return;
 	}
 
@@ -833,6 +835,7 @@ static void get_reachable_rec(NFA_state_list_t* list, NFA_state_t* start){
 		list->contains_accepting_state = 1;
 	}
 
+//	start->visited = 1;
 }
 
 
@@ -881,13 +884,10 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
  */
 static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_mode_t mode){
 	//Base case, we're done here
-	if(nfa_state == NULL || nfa_state->visited == 1){
+	if(nfa_state == NULL){
 		//"dead end" so to speak
 		return;
 	}
-
-	//We have visited this guy already now
-	nfa_state->visited = 1;
 
 	//Only print in verbose mode
 	if(mode == REGEX_VERBOSE){
@@ -911,38 +911,7 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 		}
 	}
 	
-	if(nfa_state->opt == SPLIT){
-		create_DFA_rec(new_state, nfa_state->next, mode);
-		create_DFA_rec(new_state, nfa_state->next_opt, mode);
-	} else {
-		create_DFA_rec(new_state, nfa_state->next,  mode);
-	}
-	
-	/*
-	if(nfa_state->next_opt != NULL){
-		create_DFA_rec(, NFA_state_t *nfa_state, regex_mode_t mode)
-	}
-
-	//Recursively create the next DFA state for opt and next opt
-	if(nfa_state->opt != SPLIT){
-		//We should only create these if we don't have a split
-		create_DFA_rec(new_state, nfa_state->next, mode);
-		create_DFA_rec(new_state, nfa_state->next_opt, mode);
-	} else {
-		//If we get here, we'll skip over the states that were already picked up by the split and go onto 
-		//the next
-		if(nfa_state->next != NULL){
-			create_DFA_rec(previous, nfa_state->next->next, mode);
-			create_DFA_rec(previous, nfa_state->next->next_opt, mode);
-		}
-
-		//Recursively create the states from next_opt
-		if(nfa_state->next_opt != NULL){
-			create_DFA_rec(previous, nfa_state->next_opt->next, mode);
-			create_DFA_rec(previous, nfa_state->next_opt->next_opt, mode);
-		}
-	}
-	*/
+	create_DFA_rec(new_state, nfa_state->next, mode);
 }
 
 
