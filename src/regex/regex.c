@@ -527,6 +527,8 @@ static void print_NFA(NFA_state_t* nfa){
 
 /**
  * Ability to print out a DFA for debug purposes
+ * This method does not necessarily work for printing out all of the DFA states in 
+ * the way that you might expect
  */
 static void print_DFA(DFA_state_t* dfa){
 	//If the state is null we'll stop
@@ -818,14 +820,20 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 
 	//We have a split, so follow the split recursively
 	if(start->opt == SPLIT_T1){
-		//If our next guy is a split, go forward
-		if(start->next != NULL && start->next->opt == SPLIT_T1){
-			get_reachable_rec(start->next, list);
-		} else {
-			list->states[list->length] = start->next;
-			list->states[list->length + 1] = start->next_opt;
-			list->length += 2;
-		}
+		//This kind of split will never point back to itself, so we should always
+		//follow both paths
+		get_reachable_rec(start->next, list);
+		get_reachable_rec(start->next_opt, list);
+	} else if(start->opt == SPLIT_T2){
+		//If we have a split_T2, we know that this state will always point back to
+		//itself along the next_opt line
+		
+		//We'll add him in because he can reach himself
+		list->states[list->length] = start;
+		list->length++;
+
+		//We'll only explore the next path, we've already accounted for the self reference
+		get_reachable_rec(start->next, list);
 	} else {
 		//Add this state to the list of NFA states
 		list->states[list->length] = start;
