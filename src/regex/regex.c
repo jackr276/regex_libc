@@ -996,8 +996,9 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 
 	//Convert to postfix before applying our algorithm
 	char* postfix = in_to_post(pattern, mode);
+	//Save for reference
+	regex.regex = postfix;
 
-	
 	//If this didn't work, we will stop and return a bad regex
 	if(postfix == NULL){
 		//Verbose mode
@@ -1221,32 +1222,29 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
  * in theory, this should work. We'll keep track of what the accepting state is because there is a chance
  * that we could double free it, so we won't let the recursive function handle that
  */
-static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t** accepting_state){
+static void teardown_NFA_state(NFA_state_t** state_ptr){
 	//Base case
 	if(state_ptr == NULL || *state_ptr == NULL){ 
 		return;
 	}
 
-	//If we find the accepting state we will save it for later to be freed by
-	//the caller
-	if((*state_ptr)->opt == ACCEPTING){
-		*accepting_state = *state_ptr;
-		return;
-	}
-
 	//Recursively call free on the next states here
 	if((*state_ptr)->next != NULL){
-		teardown_NFA_state(&((*state_ptr)->next), accepting_state);
+		teardown_NFA_state(&((*state_ptr)->next));
 	}
 
-	if((*state_ptr)->next_opt != NULL){
-		teardown_NFA_state(&((*state_ptr)->next_opt), accepting_state);
+	//If we have a type 1 split, we know that we'll need to go further here
+	if((*state_ptr)->opt == SPLIT_T1){
+		teardown_NFA_state(&((*state_ptr)->next_opt));
 	}
 
-	//Free the pointer to this state
-	free(*state_ptr);
-	//Set to NULL as a warning
-	*state_ptr = NULL;
+	//If it's not null we can release it
+	if(*state_ptr != NULL){
+		//Free the pointer to this state
+		free(*state_ptr);
+		//Set to NULL as a warning
+		*state_ptr = NULL;
+	}
 }
 
 
@@ -1275,19 +1273,14 @@ static void teardown_DFA_state(DFA_state_t* state){
  * Comprehensive cleanup function that cleans up everything related to the regex
  */
 void destroy_regex(regex_t regex){
-	//Call the recursive NFA freeing function
-	NFA_state_t* accepting_state;
+	//Teardown the NFA
+	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
 
-	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)), &accepting_state);
-	//Once this function runs, we should have a reference to the accepting state that we can free
-
-	//Prevent any double frees of the accepting state
-	if(accepting_state != NULL){
-		free(accepting_state);
-	}
-	
 	//Clean up the DFA
 	teardown_DFA_state((DFA_state_t*)(regex.DFA));
+
+	//Free the postfix expression
+	free(regex.regex);
 }
 
 
