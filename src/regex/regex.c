@@ -88,6 +88,8 @@ struct DFA_state_t {
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
 	DFA_state_t* transitions[130];
+	//The next dfa_state that was made, this will help us in freeing
+	DFA_state_t* next;
 };
 
 
@@ -906,6 +908,9 @@ static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_
 
 	//Create the new DFA state
 	DFA_state_t* new_state = create_DFA_state(nfa_state);
+	//Set this for freeing later on
+	previous->next = new_state;
+	new_state->next = NULL;
 
 	//Iterate over the entire NFA state list to "patch in" everything that we need here
 	for(u_int16_t i = 0; i < new_state->nfa_state_list.length; i++){
@@ -937,6 +942,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 
 	//0 out the entire array of NFA states
 	memset(dfa_start->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
+
+	//Set the next to be null. DFA start is the linked list head
+	dfa_start->next = NULL;
 
 	//Call the recursive helper method to do the rest for us
 	create_DFA_rec(dfa_start, nfa_start, mode);
@@ -1243,24 +1251,23 @@ static void teardown_NFA_state(NFA_state_t** state_ptr, NFA_state_t** accepting_
 
 
 /**
- * Recursively free all DFA states that are pointed to. We should have no dangling states, so in theory,
+ * Iteratively free all DFA states that are pointed to. We should have no dangling states, so in theory,
  * this should work
  */
-static void teardown_DFA_state(DFA_state_t** state){
-	//Base case
-	if(*state == NULL){
-		return;
+static void teardown_DFA_state(DFA_state_t* state){
+	//A cursor for us to use
+	DFA_state_t* cursor = state;
+	DFA_state_t* temp;
+
+	while(cursor != NULL){
+		//Save cursor
+		temp = cursor;
+		//Advance the pointer
+		cursor = cursor->next;
+
+		//Free temp after we've advanced
+		free(temp);
 	}
-
-	//Recursively teardown every other state
-	for(u_int16_t i = 0; i < 130; i++){
-		teardown_DFA_state(&((*state)->transitions[i]));
-	}
-
-	//Free the state overall
-	free(*state);
-
-	*state = NULL;
 }
 
 
@@ -1280,7 +1287,7 @@ void destroy_regex(regex_t regex){
 	}
 	
 	//Clean up the DFA
-	teardown_DFA_state((DFA_state_t**)(&(regex.DFA)));
+	teardown_DFA_state((DFA_state_t*)(regex.DFA));
 }
 
 
