@@ -1228,23 +1228,38 @@ static void teardown_NFA_state(NFA_state_t** state_ptr){
 		return;
 	}
 
-	//Recursively call free on the next states here
-	if((*state_ptr)->next != NULL){
-		teardown_NFA_state(&((*state_ptr)->next));
-	}
+	printf("FREEING: %d\n", (*state_ptr)->opt);
 
-	//If we have a type 1 split, we know that we'll need to go further here
+	//We should always recursively tear down the next state
+	teardown_NFA_state(&((*state_ptr)->next));
+
+	//If we have a type 1 split we should free the optional next pointer
 	if((*state_ptr)->opt == SPLIT_T1){
+		//So this doesn't work because we aren't able to flag the next state's
+		//pointer if we've already freed it but we have two different states.
+		//This will probably require a rewrite :[
 		teardown_NFA_state(&((*state_ptr)->next_opt));
 	}
 
-	//If it's not null we can release it
-	if(*state_ptr != NULL){
-		//Free the pointer to this state
-		free(*state_ptr);
-		//Set to NULL as a warning
-		*state_ptr = NULL;
+	//Free the pointer to this state
+	free(*state_ptr);
+	//Set to NULL as a warning
+	*state_ptr = NULL;
+}
+
+
+static void teardown_NFA_state_rec(NFA_state_t* previous, NFA_state_t* current){
+	//If current's next pointer is NULL, we've reached a base case
+	if(current->next == NULL){
+		//Free current
+		free(current);
+		//Set the previous state's next pointer to be null
+		previous->next = NULL;
 	}
+
+	//If we get here, we know that the next guy isn't null
+
+
 }
 
 
