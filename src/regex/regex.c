@@ -7,6 +7,7 @@
 
 #include "regex.h" 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 //Forward declare
@@ -35,6 +36,8 @@ struct NFA_state_t {
 	NFA_state_t* next;
 	//The optional second next for alternating states 
 	NFA_state_t* next_opt;
+	//The next created state in the linked list
+	NFA_state_t* next_created;
 };
 
 
@@ -362,6 +365,8 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
 	state->opt = opt;
 	state->next = next;
 	state->next_opt = next_opt;
+	//Must be set later on
+	state->next_created = NULL;
 
 	//Increment the counter
 	(*num_states)++;
@@ -560,6 +565,8 @@ static void print_DFA(DFA_state_t* dfa){
 static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
+	//A linked list for us to hold all of our created states
+	NFA_state_t* all_states = create_state(NFA_END, NULL, NULL, 0);
 
 	//Declare these for use 
 	NFA_fragement_t* frag_2;
@@ -624,6 +631,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
 				split = create_state(SPLIT_T1, frag_1->start,  frag_2->start, num_states);
+				//Add into the linked list
+				split->next_created = all_states;
+				all_states->next_created = split;
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
@@ -647,6 +657,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
 				split = create_state(SPLIT_T2, NULL, frag_1->start, num_states);
+				//Add into the linked list
+				split->next_created = all_states;
+				all_states->next_created = split;
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -676,6 +689,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
 				split = create_state(SPLIT_T2, NULL, frag_1->start, num_states);
+				//Add into the linked list
+				split->next_created = all_states;
+				all_states->next_created = split;
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -708,6 +724,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//state. This allows for a "zero or one" function
 				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
 				split = create_state(SPLIT_T1, NULL, frag_1->start, num_states);
+				//Add into the linked list
+				split->next_created = all_states;
+				all_states->next_created = split;
 
 				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
 				//the two fringe lists into one big one because the fringe is a combined fringe
@@ -732,6 +751,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new state with the escaped character
 				s = create_state(*cursor, NULL,  NULL,  num_states);
+				//Add into the linked list
+				s->next_created = all_states;
+				all_states->next_created = s;
 
 				//Create a fragment with the fringe states being the new state that we created
 				fragment = create_fragment(s, init_list(s));
@@ -748,6 +770,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new state with the charcter, and no attached states
 				s = create_state(ch, NULL, NULL, num_states);
+				//Add into the linked list
+				s->next_created = all_states;
+				all_states->next_created = s;
 
 				//Create a fragment, with the fringe states of that fragment being just this new state that we
 				//created
@@ -784,6 +809,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 	//Create the accepting state
 	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, num_states);
+	//Add into the linked list
+	//So now, the accepting state holds a reference to our entire state linked list
+	accepting_state->next_created = all_states;
 
 	//Set everything in the final fringe to point to the accepting state
 	concatenate_states(final->fringe_states, accepting_state, 1);
@@ -1251,15 +1279,23 @@ static void teardown_NFA_state(NFA_state_t** state_ptr){
 static void teardown_NFA_state_rec(NFA_state_t* previous, NFA_state_t* current){
 	//If current's next pointer is NULL, we've reached a base case
 	if(current->next == NULL){
+		printf("Freeing: %d", current->opt);
 		//Free current
 		free(current);
 		//Set the previous state's next pointer to be null
 		previous->next = NULL;
+		//Get out
+		return;
 	}
 
-	//If we get here, we know that the next guy isn't null
+	//If we get here, we know that the next guy isn't null, so we've gotta keep going
+	//A type 1 split never points back to itself, so we need to go off on the nextopt branch
+	if(previous->opt == SPLIT_T1){
+		teardown_NFA_state_rec(current, current->next_opt);
+	}
 
-
+	//And no matter what, if we get here we need to pursue the "next" chain
+	teardown_NFA_state_rec(current, current->next);
 }
 
 
@@ -1288,8 +1324,14 @@ static void teardown_DFA_state(DFA_state_t* state){
  * Comprehensive cleanup function that cleans up everything related to the regex
  */
 void destroy_regex(regex_t regex){
+	//Special case -- we have a one state NFA. This should really never happen
+	if(((NFA_state_t*)(regex.NFA))->next == NULL){
+		free(regex.NFA);
+	}
+	
 	//Teardown the NFA
-	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
+	teardown_NFA_state_rec(regex.NFA, ((NFA_state_t*)(regex.NFA))->next);
+//	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
 
 	//Clean up the DFA
 	teardown_DFA_state((DFA_state_t*)(regex.DFA));

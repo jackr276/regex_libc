@@ -7,6 +7,7 @@
 #define REGEX_H
 
 #define ACCEPTING 129
+#define NFA_END 150
 //Split_T1 will never point back to itself
 #define SPLIT_T1 127 
 //Split T2 will point back to itself
