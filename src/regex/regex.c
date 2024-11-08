@@ -566,7 +566,8 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
 	//A linked list for us to hold all of our created states
-	NFA_state_t* all_states = create_state(NFA_END, NULL, NULL, 0);
+	//The very end of our linked list
+	NFA_state_t* tail =  NULL;
 
 	//Declare these for use 
 	NFA_fragement_t* frag_2;
@@ -623,7 +624,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 			//Alternate state
 			case '|':
-				num_processed++;
 				//Grab the two most recent fragments off of the stack
 				frag_2 = (NFA_fragement_t*)pop(stack);
 				frag_1 = (NFA_fragement_t*)pop(stack);
@@ -631,9 +631,17 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
 				split = create_state(SPLIT_T1, frag_1->start,  frag_2->start, num_states);
-				//Add into the linked list
-				split->next_created = all_states;
-				all_states->next_created = split;
+
+				//If this is the very first state then it is our origin for the linked list
+				if(num_processed == 0){
+					tail = split;
+				} else {
+					//Add onto linked list
+					tail->next_created = split;
+					tail = split;
+				}
+
+				num_processed++;
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
@@ -650,16 +658,22 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 			//0 or more, more specifically the kleene star
 			case '*':
-				num_processed++;
-
 				//Pop the most recent fragment
 				frag_1 = pop(stack);
 
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
 				split = create_state(SPLIT_T2, NULL, frag_1->start, num_states);
-				//Add into the linked list
-				split->next_created = all_states;
-				all_states->next_created = split;
+				
+				//If this is the very first state then it is our origin for the linked list
+				if(num_processed == 0){
+					tail = split;
+				} else {
+					//Add onto linked list
+					tail->next_created = split;
+					tail = split;
+				}
+
+				num_processed++;
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -680,18 +694,23 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 			//1 or more, more specifically positive closure
 			case '+':
-				//We should try handing this instead as "char`char+" because that's really what it is
-				num_processed++;
-
 				//Grab the most recent fragment
 				frag_1 = pop(stack);
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
 				split = create_state(SPLIT_T2, NULL, frag_1->start, num_states);
-				//Add into the linked list
-				split->next_created = all_states;
-				all_states->next_created = split;
+	
+				//If this is the very first state then it is our origin for the linked list
+				if(num_processed == 0){
+					tail = split;
+				} else {
+					//Add onto linked list
+					tail->next_created = split;
+					tail = split;
+				}
+
+				num_processed++;
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -715,8 +734,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 			//0 or 1 instances of the preceding fragment
 			case '?':
-				num_processed++;
-
 				//Grab the most recent fragment
 				frag_1 = pop(stack);
 
@@ -724,9 +741,17 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//state. This allows for a "zero or one" function
 				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
 				split = create_state(SPLIT_T1, NULL, frag_1->start, num_states);
-				//Add into the linked list
-				split->next_created = all_states;
-				all_states->next_created = split;
+
+				//If this is the very first state then it is our origin for the linked list
+				if(num_processed == 0){
+					tail = split;
+				} else {
+					//Add onto linked list
+					tail->next_created = split;
+					tail = split;
+				}
+
+				num_processed++;
 
 				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
 				//the two fringe lists into one big one because the fringe is a combined fringe
@@ -743,17 +768,17 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 			//If we see the escape character, then we process the immediately next character as a regular char
 			case '~':
-				//One more processed
-				num_processed++;
-
-				//We'll skip over this character, the one that's next is what really matters
 				cursor++;
 
 				//Create a new state with the escaped character
 				s = create_state(*cursor, NULL,  NULL,  num_states);
-				//Add into the linked list
-				s->next_created = all_states;
-				all_states->next_created = s;
+
+				if(num_processed == 0){
+					tail = s;
+				} else {
+					tail->next_created = s;
+					tail = s;
+				}
 
 				//Create a fragment with the fringe states being the new state that we created
 				fragment = create_fragment(s, init_list(s));
@@ -765,14 +790,20 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 			//Any character that is not one of the special characters
 			default:
-				//One more processed
-				num_processed++;
-
 				//Create a new state with the charcter, and no attached states
 				s = create_state(ch, NULL, NULL, num_states);
-				//Add into the linked list
-				s->next_created = all_states;
-				all_states->next_created = s;
+
+				//concatenate to linkedlist
+				if(num_processed == 0){
+					printf("Making start state\n");
+					tail = s;
+				} else {
+					tail->next_created = s;
+					tail = s;
+				}
+
+				//One more processed
+				num_processed++;
 
 				//Create a fragment, with the fringe states of that fragment being just this new state that we
 				//created
@@ -785,7 +816,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				if(mode == REGEX_VERBOSE){
 					printf("\nAdded fragment for character: %c\n", ch);
 				}
-
 				break;
 		}
 	}
@@ -810,8 +840,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	//Create the accepting state
 	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, num_states);
 	//Add into the linked list
-	//So now, the accepting state holds a reference to our entire state linked list
-	accepting_state->next_created = all_states;
+	tail->next_created = accepting_state;
 
 	//Set everything in the final fringe to point to the accepting state
 	concatenate_states(final->fringe_states, accepting_state, 1);
@@ -1246,56 +1275,31 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 
 
 /**
- * Recursively free all NFA states in that are pointed to. We should have no dangling states, so 
- * in theory, this should work. We'll keep track of what the accepting state is because there is a chance
- * that we could double free it, so we won't let the recursive function handle that
+ * Iteratively free all NFA states using their built in linked list feature.
+ * The linked list feature allows for us to avoid spirious loops that can
+ * occur because states are allowed to point back to themselves. All that we
+ * have to do with this is follow the chain down to the end
  */
-static void teardown_NFA_state(NFA_state_t** state_ptr){
+static void teardown_NFA(NFA_state_t* state_ptr){
 	//Base case
-	if(state_ptr == NULL || *state_ptr == NULL){ 
+	if(state_ptr == NULL){
 		return;
 	}
 
-	printf("FREEING: %d\n", (*state_ptr)->opt);
+	//Two pointers for our use here
+	NFA_state_t* cursor = state_ptr;
+	NFA_state_t* temp;
 
-	//We should always recursively tear down the next state
-	teardown_NFA_state(&((*state_ptr)->next));
-
-	//If we have a type 1 split we should free the optional next pointer
-	if((*state_ptr)->opt == SPLIT_T1){
-		//So this doesn't work because we aren't able to flag the next state's
-		//pointer if we've already freed it but we have two different states.
-		//This will probably require a rewrite :[
-		teardown_NFA_state(&((*state_ptr)->next_opt));
+	//Loop while we still have stuff to free
+	while(cursor != NULL) {
+		printf("FREEING: %d\n", cursor->opt);
+		//Save the value
+		temp = cursor;
+		//Advance the linked list
+		cursor = cursor->next_created;
+		//Free the value
+		free(temp);
 	}
-
-	//Free the pointer to this state
-	free(*state_ptr);
-	//Set to NULL as a warning
-	*state_ptr = NULL;
-}
-
-
-static void teardown_NFA_state_rec(NFA_state_t* previous, NFA_state_t* current){
-	//If current's next pointer is NULL, we've reached a base case
-	if(current->next == NULL){
-		printf("Freeing: %d", current->opt);
-		//Free current
-		free(current);
-		//Set the previous state's next pointer to be null
-		previous->next = NULL;
-		//Get out
-		return;
-	}
-
-	//If we get here, we know that the next guy isn't null, so we've gotta keep going
-	//A type 1 split never points back to itself, so we need to go off on the nextopt branch
-	if(previous->opt == SPLIT_T1){
-		teardown_NFA_state_rec(current, current->next_opt);
-	}
-
-	//And no matter what, if we get here we need to pursue the "next" chain
-	teardown_NFA_state_rec(current, current->next);
 }
 
 
@@ -1303,7 +1307,7 @@ static void teardown_NFA_state_rec(NFA_state_t* previous, NFA_state_t* current){
  * Iteratively free all DFA states that are pointed to. We should have no dangling states, so in theory,
  * this should work
  */
-static void teardown_DFA_state(DFA_state_t* state){
+static void teardown_DFA(DFA_state_t* state){
 	//A cursor for us to use
 	DFA_state_t* cursor = state;
 	DFA_state_t* temp;
@@ -1324,17 +1328,11 @@ static void teardown_DFA_state(DFA_state_t* state){
  * Comprehensive cleanup function that cleans up everything related to the regex
  */
 void destroy_regex(regex_t regex){
-	//Special case -- we have a one state NFA. This should really never happen
-	if(((NFA_state_t*)(regex.NFA))->next == NULL){
-		free(regex.NFA);
-	}
-	
 	//Teardown the NFA
-	teardown_NFA_state_rec(regex.NFA, ((NFA_state_t*)(regex.NFA))->next);
-//	teardown_NFA_state((NFA_state_t**)(&(regex.NFA)));
+	teardown_NFA((NFA_state_t*)(regex.NFA));
 
 	//Clean up the DFA
-	teardown_DFA_state((DFA_state_t*)(regex.DFA));
+	teardown_DFA((DFA_state_t*)(regex.DFA));
 
 	//Free the postfix expression
 	free(regex.regex);
