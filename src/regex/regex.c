@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 //Forward declare
 typedef struct NFA_state_t NFA_state_t;
@@ -934,6 +935,9 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 	//Allocate a DFA state
 	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
 
+	//Set to null as warning
+	dfa_state->next = NULL;
+
 	//0 out the entire array of DFA transitions as well
 	memset(dfa_state->transitions, 0, 130*sizeof(DFA_state_t*));
 
@@ -949,62 +953,43 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 
 
 /**
- * A recursive helper function for DFA creation
- */
-static void create_DFA_rec(DFA_state_t* previous, NFA_state_t* nfa_state, regex_mode_t mode){
-	//Base case, we're done here
-	if(nfa_state == NULL){
-		//"dead end" so to speak
-		return;
-	}
-
-	//Only print in verbose mode
-	if(mode == REGEX_VERBOSE){
-		printf("Creating state for opt: %c\n", nfa_state->opt);
-	}
-
-	//Create the new DFA state
-	DFA_state_t* new_state = create_DFA_state(nfa_state);
-	//Set this for freeing later on
-	previous->next = new_state;
-	new_state->next = NULL;
-
-	//Iterate over the entire NFA state list to "patch in" everything that we need here
-	for(u_int16_t i = 0; i < new_state->nfa_state_list.length; i++){
-		//We want everything in the previous state to point to the new state
-		if(new_state->nfa_state_list.states[i] != NULL){
-			//Grab the option
-			u_int16_t opt = new_state->nfa_state_list.states[i]->opt;
-
-			//We don't want any non-characters polluting the array
-			if(opt != 0){
-				previous->transitions[opt] = new_state;
-			}
-		}
-	}
-	
-	create_DFA_rec(new_state, nfa_state->next, mode);
-}
-
-
-/**
- * Translate an NFA into an equivalent DFA
+ * Translate an NFA into an equivalent DFA using the reachability matrix
+ * method. We will recursively figure out which states are reachable from other states. Our
+ * new linked list of states should help us with this
  */
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
-	//We'll explicitly create the start state here
-	DFA_state_t* dfa_start = (DFA_state_t*)malloc(sizeof(DFA_state_t));
+	//The starting state for our DFA
+	DFA_state_t* dfa_start;
+	DFA_state_t* previous;
+	DFA_state_t* temp;
 
-	//0 out the entire array of DFA transitions as well
-	memset(dfa_start->transitions, 0, 130*sizeof(DFA_state_t*));
+	//Make the first state here to get things going
+	dfa_start = create_DFA_state(nfa_start);
+	previous = dfa_start;	
 
-	//0 out the entire array of NFA states
-	memset(dfa_start->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
+	//Maintain a cursor to the current NFA state
+	NFA_state_t* nfa_cursor = nfa_start->next_created;
 
-	//Set the next to be null. DFA start is the linked list head
-	dfa_start->next = NULL;
+	//Iterate through every NFA state. We have a 1-1 nfa-state dfa-state translation
+	while(nfa_cursor != NULL){
+		//Make a new dfa state with the cursor
+		temp = create_DFA_state(nfa_cursor);
+		
+		//Patch in all of our new states
+		for(u_int16_t i = 0; i < temp->nfa_state_list.length; i++){
+			//Grab the character
+			u_int16_t opt = temp->nfa_state_list.states[i]->opt;
+			//Patch in all of the new states
+			previous->transitions[opt] = temp;
+		}
 
-	//Call the recursive helper method to do the rest for us
-	create_DFA_rec(dfa_start, nfa_start, mode);
+		//Advance the current DFA pointer
+		previous->next = temp;
+		previous = temp;
+
+		//Advance the pointer
+		nfa_cursor = nfa_cursor->next_created;
+	}
 
 	//Return a pointer to the start state
 	return dfa_start;
