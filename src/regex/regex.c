@@ -544,18 +544,16 @@ static void print_DFA(DFA_state_t* dfa){
 		return;
 	}
 
-	printf("States: {");
+	//Grab a cursor to our DFA
+	DFA_state_t* cursor = dfa;
 
-	for(u_int16_t i = 0; i < dfa->nfa_state_list.length; i++){
-		(dfa->nfa_state_list.states[i]->opt == ACCEPTING) ? printf("ACCEPTING") : printf("%c, ", dfa->nfa_state_list.states[i]->opt);
-	}
-
-	printf("}->");
-
-	for(u_int16_t i = 0; i < 130; i++){
-		if(dfa->transitions[i] != NULL){
-			print_DFA(dfa->transitions[i]);
+	while(cursor != NULL){
+		for(u_int16_t i = 0; i < cursor->nfa_state_list.length; i++){
+			printf("States: {}");
 		}
+		//Advance the cursor
+		cursor = cursor->next;
+
 	}
 }
 
@@ -887,11 +885,6 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	} else if(start->opt == SPLIT_T2){
 		//If we have a split_T2, we know that this state will always point back to
 		//itself along the next_opt line
-		
-		//We'll add him in because he can reach himself
-		list->states[list->length] = start;
-		list->length++;
-
 		//We'll only explore the next path, we've already accounted for the self reference
 		get_reachable_rec(start->next, list);
 	} else {
