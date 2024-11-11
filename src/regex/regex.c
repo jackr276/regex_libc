@@ -546,14 +546,20 @@ static void print_DFA(DFA_state_t* dfa){
 
 	//Grab a cursor to our DFA
 	DFA_state_t* cursor = dfa;
+	u_int16_t i = 0;
 
 	while(cursor != NULL){
+		printf("State %d: {", i);
 		for(u_int16_t i = 0; i < cursor->nfa_state_list.length; i++){
-			printf("States: {}");
+			u_int16_t opt = cursor->nfa_state_list.states[i]->opt;
+			opt == ACCEPTING ? printf("ACCEPTING") : printf("%c, ", opt);
 		}
+
+		printf("} -> ");
+
 		//Advance the cursor
 		cursor = cursor->next;
-
+		i++;
 	}
 }
 
