@@ -509,7 +509,7 @@ static void print_NFA(NFA_state_t* nfa){
 	}
 
 	if(nfa->opt != ACCEPTING){
-		//nfa->visited = 2;
+		nfa->visited = 2;
 	}
 
 	//Support printing of special characters split and accepting
@@ -527,6 +527,11 @@ static void print_NFA(NFA_state_t* nfa){
 		print_NFA(nfa->next);
 		printf("\n");
 		print_NFA(nfa->next_opt);
+	} else if(nfa->opt == SPLIT_T2){
+		print_NFA(nfa->next);
+		printf("\n");
+		print_NFA(nfa->next_opt);
+		nfa->visited = 2;
 	} else {
 		print_NFA(nfa->next);
 	}
@@ -605,6 +610,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//We need to set all of the fringe states in fragment 1 to point to the start
 				//of fragment 2
+				//Concatenation ALWAYS follows the "next" option without exception
 				concatenate_states(frag_1->fringe_states, frag_2->start, 1);
 
 				//The fringe list of fragment 1 should be irrelevant now, so we can get rid of it
@@ -878,7 +884,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
  */
 static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	//Base case
-	if(start == NULL || list == NULL || start->visited == 1){
+	if(start == NULL || list == NULL){
 		return;
 	}
 
