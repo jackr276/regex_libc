@@ -554,13 +554,21 @@ static void print_DFA(DFA_state_t* dfa){
 	u_int16_t i = 0;
 
 	while(cursor != NULL){
-		printf("State %d: {", i);
+		printf("State %d, internal states: {", i);
 		for(u_int16_t i = 0; i < cursor->nfa_state_list.length; i++){
 			u_int16_t opt = cursor->nfa_state_list.states[i]->opt;
 			opt == ACCEPTING ? printf("ACCEPTING") : printf("%c, ", opt);
 		}
 
-		printf("} -> ");
+		//Print all of the states that we are able to reach from this state
+		printf("}, reachable: {");
+		for(u_int16_t i = 0; i < 130; i++){
+			if(cursor->transitions[i] != NULL){
+				i == ACCEPTING ? printf("ACCEPTING, ") : printf("%c, ", i);
+			}
+		}
+
+		printf("} -> \n");
 
 		//Advance the cursor
 		cursor = cursor->next;
