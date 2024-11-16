@@ -1290,7 +1290,6 @@ static void teardown_NFA(NFA_state_t* state_ptr){
 
 	//Loop while we still have stuff to free
 	while(cursor != NULL) {
-		printf("FREEING: %d\n", cursor->opt);
 		//Save the value
 		temp = cursor;
 		//Advance the linked list
