@@ -896,25 +896,30 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 		return;
 	}
 
-	//We have a split, so follow the split recursively
-	if(start->opt == SPLIT_T1){
+	//We can tell what to do based on our opt here
+	switch(start->opt){
 		//This kind of split will never point back to itself, so we should always
 		//follow both paths
-		get_reachable_rec(start->next, list);
-		get_reachable_rec(start->next_opt, list);
-	} else if(start->opt == SPLIT_T2){
-		//If we have a split_T2, we know that this state will always point back to
-		//itself along the next_opt line
-		//We'll only explore the next path, we've already accounted for the self reference
-		get_reachable_rec(start->next, list);
-	} else {
-		//Add this state to the list of NFA states
-		list->states[list->length] = start;
+		case SPLIT_T1:
+			get_reachable_rec(start->next, list);
+			get_reachable_rec(start->next_opt, list);
+			break;
+		case SPLIT_T2:
+			//If we have a split_T2, we know that this state will always point back to
+			//itself along the next_opt line
+			//We'll only explore the next path, we've already accounted for the self reference
+			//Add this state to the list of NFA states
+			get_reachable_rec(start->next, list);
+			break;
+		default:
+			//Add this state to the list of NFA states
+			list->states[list->length] = start;
 
-		//Increment the length
-		list->length++;
+			//Increment the length
+			list->length++;
+			break;
 	}
-	
+
 	//If we find an accepting state, then set this flag. This will speed up our match function
 	if(start->opt == ACCEPTING){
 		list->contains_accepting_state = 1;
@@ -987,6 +992,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	while(nfa_cursor != NULL){
 		//Make a new dfa state with the cursor
 		temp = create_DFA_state(nfa_cursor);
+		//If we have a type 2 split, we know that the next guy will already be accounted for
+		//TODO FIXME
+		if(nfa_cursor->opt == SPLIT_T2){
+			nfa_cursor = nfa_cursor->next_created;
+		}
 		
 		//Patch in all of our new states
 		for(u_int16_t i = 0; i < temp->nfa_state_list.length; i++){
