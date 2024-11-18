@@ -30,6 +30,7 @@ struct NFA_state_t {
 	//Was this state visited?
 	//0 - default
 	//1 - visited by dfa constructor
+	//3 - from split
 	u_int8_t visited;
 	//The char that we hold
 	u_int16_t opt;
@@ -895,7 +896,6 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	if(start == NULL || list == NULL){
 		return;
 	}
-
 	//We can tell what to do based on our opt here
 	switch(start->opt){
 		//This kind of split will never point back to itself, so we should always
@@ -971,6 +971,36 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 
 
 /**
+ * EXPERIMENTAL
+ *
+ * This function will create one "super-state" that is two states merged together at once. This will be used
+ * for our "SPLIT_T1" states, as we should really never have a state that represents a split T_1 in and off itself
+ */
+static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* nfa_state_b){
+	//Create these 2 states
+	DFA_state_t* state_1 = create_DFA_state(nfa_state_a);
+	DFA_state_t* state_2 = create_DFA_state(nfa_state_b);
+
+	//Mark all states in state_list 1 as having been visited by a split
+	for(u_int16_t i = 0; i < state_1->nfa_state_list.length; i++){
+		state_1->nfa_state_list.states[i]->visited = 3;
+	}
+
+	//Patch these in together
+	for(u_int16_t i = 0; i < state_2->nfa_state_list.length; i++){
+		//Mark them
+		state_2->nfa_state_list.states[i]->visited = 3;
+		//Add them into state 1
+		state_1->nfa_state_list.states[state_1->nfa_state_list.length] = state_2->nfa_state_list.states[i];
+		state_1->nfa_state_list.length += 1;
+	}
+
+	return state_1;
+
+}
+
+
+/**
  * Translate an NFA into an equivalent DFA using the reachability matrix
  * method. We will recursively figure out which states are reachable from other states. Our
  * new linked list of states should help us with this
@@ -990,14 +1020,23 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 
 	//Iterate through every NFA state. We have a 1-1 nfa-state dfa-state translation
 	while(nfa_cursor != NULL){
-		//Make a new dfa state with the cursor
-		temp = create_DFA_state(nfa_cursor);
-		//If we have a type 2 split, we know that the next guy will already be accounted for
-		//TODO FIXME
-		if(nfa_cursor->opt == SPLIT_T2){
-			nfa_cursor = nfa_cursor->next_created;
+		//If we've already gotten to this guy from a split, we'll move right on
+		if(nfa_cursor->visited == 3){
+			nfa_cursor = nfa_cursor->next;
+			continue;
 		}
+
+		//We'll set this flag to be true if we've gotten here from a split
+		if(nfa_cursor->opt == SPLIT_T1){
+			create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+
+		} else {
+			//Make a new dfa state with the cursor
+			temp = create_DFA_state(nfa_cursor);
+		}
+		//If we have a type 2 split, we know that the next guy will already be accounted for
 		
+	
 		//Patch in all of our new states
 		for(u_int16_t i = 0; i < temp->nfa_state_list.length; i++){
 			//Grab the character
