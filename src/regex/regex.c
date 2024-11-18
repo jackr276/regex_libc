@@ -765,6 +765,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//If this is the very first state then it is our origin for the linked list
 				if(num_processed == 0){
 					tail = split;
+				//We'll need to insert this into the linked list in the right position
 				} else {
 					//Add onto linked list
 					tail->next_created = split;
@@ -898,13 +899,7 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	}
 	//We can tell what to do based on our opt here
 	switch(start->opt){
-		//This kind of split will never point back to itself, so we should always
-		//follow both paths
-		case SPLIT_T1:
-			get_reachable_rec(start->next, list);
-			get_reachable_rec(start->next_opt, list);
-			break;
-		case SPLIT_T2:
+			case SPLIT_T2:
 			//If we have a split_T2, we know that this state will always point back to
 			//itself along the next_opt line
 			//We'll only explore the next path, we've already accounted for the self reference
@@ -996,7 +991,6 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
 	}
 
 	return state_1;
-
 }
 
 
@@ -1026,10 +1020,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 			continue;
 		}
 
-		//We'll set this flag to be true if we've gotten here from a split
+		//If we have a type 1 split, we'll call a special function for it
 		if(nfa_cursor->opt == SPLIT_T1){
-			create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
-
+			temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 		} else {
 			//Make a new dfa state with the cursor
 			temp = create_DFA_state(nfa_cursor);
@@ -1050,7 +1043,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 		previous = temp;
 
 		//Advance the pointer
-		nfa_cursor = nfa_cursor->next_created;
+		nfa_cursor = nfa_cursor->next;
 	}
 
 	//Return a pointer to the start state
