@@ -76,7 +76,7 @@ struct NFA_fragement_t {
  * NFA states. This struct will be used for this purpose
  */
 struct NFA_state_list_t {
-	NFA_state_t* states[130];
+	NFA_state_t* states[140];
 	u_int16_t length;
 	//Does this list contain an accepting state?
 	u_int8_t contains_accepting_state;
@@ -92,7 +92,7 @@ struct DFA_state_t {
 	NFA_state_list_t nfa_state_list;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
-	DFA_state_t* transitions[130];
+	DFA_state_t* transitions[140];
 	//The next dfa_state that was made, this will help us in freeing
 	DFA_state_t* next;
 };
@@ -1005,6 +1005,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	DFA_state_t* dfa_start;
 	DFA_state_t* previous;
 	DFA_state_t* temp;
+	DFA_state_t* repeater;
 
 	//Make the first state here to get things going
 	switch (nfa_start->opt) {
@@ -1021,6 +1022,14 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 			 */
 			dfa_start = create_merged_states(nfa_start->next, nfa_start->next_opt);
 
+			break;
+		case SPLIT_KLEENE:
+			//This is the state that will repeat
+			dfa_start = create_merged_states(nfa_start->next, nfa_start->next_opt);
+			//We don't want to flag this one as ignorable
+			nfa_start->next->visited = 0;
+			//This state points to itself
+			temp->transitions[nfa_start->next_opt->opt] = temp;
 			break;
 		default:
 			dfa_start = create_DFA_state(nfa_start);
@@ -1046,10 +1055,19 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 				break;
 			case SPLIT_ALTERNATE:	
+				//TODO i do not work
 				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+				break;
+			case SPLIT_KLEENE:
+				//This is the state that will repeat
+				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+				//This state points to itself because a kleene state can always reach itself
+				temp->transitions[nfa_cursor->next_opt->opt] = temp;
+				nfa_cursor->visited = 0;
 				break;
 			default:
 				temp = create_DFA_state(nfa_cursor);
+				break;
 		}
 		//If we have a type 2 split, we know that the next guy will already be accounted for
 		
