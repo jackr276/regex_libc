@@ -6,14 +6,17 @@
 #ifndef REGEX_H
 #define REGEX_H
 
-#define ACCEPTING 129
+//The accepting constant
+#define ACCEPTING 131
 #define NFA_END 150
 //Split_one_or_more is specifically used for the question mark(?) operator
 #define SPLIT_ONE_OR_MORE 127 
 //Split_alternate is specifically used for the alternation(|) operator
-#define SPLIT_ALTERNATE 130
-//Split T2 will point back to itself
-#define SPLIT_T2 128 
+#define SPLIT_ALTERNATE 128
+//Split Kleene is specifically used for the kleene star(*) operator
+#define SPLIT_KLEENE 129 
+//Split_Pos_clos is specifically used for the positive closure(+) operator
+#define SPLIT_POSITIVE_CLOSURE 130
 #define START 0
 #define REGEX_LEN 150
 #define CONCATENATION '`'
