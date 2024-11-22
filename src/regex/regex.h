@@ -8,8 +8,10 @@
 
 #define ACCEPTING 129
 #define NFA_END 150
-//Split_T1 will never point back to itself
-#define SPLIT_T1 127 
+//Split_one_or_more is specifically used for the question mark(?) operator
+#define SPLIT_ONE_OR_MORE 127 
+//Split_alternate is specifically used for the alternation(|) operator
+#define SPLIT_ALTERNATE 130
 //Split T2 will point back to itself
 #define SPLIT_T2 128 
 #define START 0

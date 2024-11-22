@@ -514,8 +514,10 @@ static void print_NFA(NFA_state_t* nfa){
 	}
 
 	//Support printing of special characters split and accepting
-	if(nfa->opt == SPLIT_T1){
-		printf("State -SPLIT_T1->");
+	if(nfa->opt == SPLIT_ALTERNATE){
+		printf("State -SPLIT_ALTERNATE->");
+ 	} else if(nfa->opt == SPLIT_ONE_OR_MORE){
+		printf("State -SPLIT_ONE_OR_MORE->");
 	} else if(nfa->opt == SPLIT_T2){
 		printf("State -SPLIT_T2->");
 	} else if(nfa->opt == ACCEPTING){
@@ -524,7 +526,7 @@ static void print_NFA(NFA_state_t* nfa){
 		printf("State -%c->", (u_int8_t)nfa->opt);
 	}
 
-	if(nfa->opt == SPLIT_T1){
+	if(nfa->opt == SPLIT_ALTERNATE || nfa->opt == SPLIT_ONE_OR_MORE){
 		print_NFA(nfa->next);
 		printf("\n");
 		print_NFA(nfa->next_opt);
@@ -650,7 +652,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
-				split = create_state(SPLIT_T1, frag_1->start,  frag_2->start, num_states);
+				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start, num_states);
 
 				//If this is the very first state then it is our origin for the linked list
 				if(num_processed == 0){
@@ -760,7 +762,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
 				//state. This allows for a "zero or one" function
 				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
-				split = create_state(SPLIT_T1, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_ONE_OR_MORE, NULL, frag_1->start, num_states);
 
 				//If this is the very first state then it is our origin for the linked list
 				if(num_processed == 0){
@@ -1021,7 +1023,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 		}
 
 		//If we have a type 1 split, we'll call a special function for it
-		if(nfa_cursor->opt == SPLIT_T1){
+		if(nfa_cursor->opt == SPLIT_ONE_OR_MORE){
 			temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 		} else {
 			//Make a new dfa state with the cursor
