@@ -977,16 +977,12 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
 	//Create these 2 states
 	DFA_state_t* state_1 = create_DFA_state(nfa_state_a);
 	DFA_state_t* state_2 = create_DFA_state(nfa_state_b);
-
-	//Mark all states in state_list 1 as having been visited by a split
-	for(u_int16_t i = 0; i < state_1->nfa_state_list.length; i++){
-		state_1->nfa_state_list.states[i]->visited = 3;
-	}
+	//These 2 have already been visited
+	nfa_state_a->visited = 3;
+	nfa_state_b->visited = 3;
 
 	//Patch these in together
 	for(u_int16_t i = 0; i < state_2->nfa_state_list.length; i++){
-		//Mark them
-		state_2->nfa_state_list.states[i]->visited = 3;
 		//Add them into state 1
 		state_1->nfa_state_list.states[state_1->nfa_state_list.length] = state_2->nfa_state_list.states[i];
 		state_1->nfa_state_list.length += 1;
@@ -1012,7 +1008,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	previous = dfa_start;	
 
 	//Maintain a cursor to the current NFA state
-	NFA_state_t* nfa_cursor = nfa_start->next_created;
+	NFA_state_t* nfa_cursor = nfa_start->next;
 
 	//Iterate through every NFA state. We have a 1-1 nfa-state dfa-state translation
 	while(nfa_cursor != NULL){
@@ -1024,6 +1020,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 
 		//If we have a type 1 split, we'll call a special function for it
 		if(nfa_cursor->opt == SPLIT_ONE_OR_MORE){
+			temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+		} else if(nfa_cursor->opt == SPLIT_ALTERNATE){
 			temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 		} else {
 			//Make a new dfa state with the cursor
