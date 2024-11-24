@@ -516,8 +516,8 @@ static void print_NFA(NFA_state_t* nfa){
 	//Support printing of special characters split and accepting
 	if(nfa->opt == SPLIT_ALTERNATE){
 		printf("State -SPLIT_ALTERNATE->");
- 	} else if(nfa->opt == SPLIT_ONE_OR_MORE){
-		printf("State -SPLIT_ONE_OR_MORE->");
+ 	} else if(nfa->opt == SPLIT_ZERO_OR_ONE){
+		printf("State -SPLIT_ZERO_OR_ONE->");
 	} else if(nfa->opt == SPLIT_POSITIVE_CLOSURE){
 		printf("State -SPLIT_POSITIVE_CLOSURE->");
 	} else if(nfa->opt == SPLIT_KLEENE){
@@ -528,7 +528,7 @@ static void print_NFA(NFA_state_t* nfa){
 		printf("State -%c->", (u_int8_t)nfa->opt);
 	}
 
-	if(nfa->opt == SPLIT_ALTERNATE || nfa->opt == SPLIT_ONE_OR_MORE){
+	if(nfa->opt == SPLIT_ALTERNATE || nfa->opt == SPLIT_ZERO_OR_ONE){
 		print_NFA(nfa->next);
 		printf("\n");
 		print_NFA(nfa->next_opt);
@@ -764,7 +764,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
 				//state. This allows for a "zero or one" function
 				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
-				split = create_state(SPLIT_ONE_OR_MORE, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_ZERO_OR_ONE, NULL, frag_1->start, num_states);
 
 				//If this is the very first state then it is our origin for the linked list
 				if(num_processed == 0){
@@ -963,7 +963,9 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 	memset(dfa_state->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
 
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
-	get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list));
+	if(nfa_state != NULL){
+		get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list));
+	}
 
 	//Return a pointer to our state
 	return dfa_state;
@@ -974,7 +976,7 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
  * EXPERIMENTAL
  *
  * This function will create one "super-state" that is two states merged together at once. This will be used
- * for our "SPLIT_T1" states, as we should really never have a state that represents a split T_1 in and off itself
+ * for our "SPLIT_" states, as we should really never have a state that represents a split T_1 in and off itself
  */
 static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* nfa_state_b){
 	//Create these 2 states
@@ -995,6 +997,18 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
 }
 
 
+static DFA_state_t* merge_alternate_states(DFA_state_t* left_edge, DFA_state_t* right_edge){
+	//Patch these in together
+	for(u_int16_t i = 0; i < right_edge->nfa_state_list.length; i++){
+		//Add them into state 1
+		left_edge->nfa_state_list.states[left_edge->nfa_state_list.length] = right_edge->nfa_state_list.states[i];
+		left_edge->nfa_state_list.length += 1;
+	}
+
+	return left_edge;
+}
+
+
 /**
  * Translate an NFA into an equivalent DFA using the reachability matrix
  * method. We will recursively figure out which states are reachable from other states. Our
@@ -1002,45 +1016,20 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
  */
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	//The starting state for our DFA
-	DFA_state_t* dfa_start;
 	DFA_state_t* previous;
 	DFA_state_t* temp;
 	DFA_state_t* repeater;
+	DFA_state_t* left_edge;
+	DFA_state_t* right_edge;
 
-	//Make the first state here to get things going
-	switch (nfa_start->opt) {
-		//Use for the ? operator
-		case SPLIT_ONE_OR_MORE:
-			dfa_start = create_merged_states(nfa_start->next, nfa_start->next_opt);
-			break;
-
-		//We'll need some special handling for split alternate here
-		case SPLIT_ALTERNATE:
-			/**
-			 * When we have a state like this, we essentially create two sub_dfas and integrate them
-			 * together at the split
-			 */
-			dfa_start = create_merged_states(nfa_start->next, nfa_start->next_opt);
-
-			break;
-		case SPLIT_KLEENE:
-			//This is the state that will repeat
-			dfa_start = create_merged_states(nfa_start->next, nfa_start->next_opt);
-			//We don't want to flag this one as ignorable
-			nfa_start->next->visited = 0;
-			//This state points to itself
-			temp->transitions[nfa_start->next_opt->opt] = temp;
-			break;
-		default:
-			dfa_start = create_DFA_state(nfa_start);
-			break;
-	}
+	//A dummy start state to enter into
+	DFA_state_t* dfa_start = create_DFA_state(NULL);
 
 	//Advance previous
 	previous = dfa_start;	
 
 	//Maintain a cursor to the current NFA state
-	NFA_state_t* nfa_cursor = nfa_start->next;
+	NFA_state_t* nfa_cursor = nfa_start;
 
 	//Iterate through every NFA state. We have a 1-1 nfa-state dfa-state translation
 	while(nfa_cursor != NULL){
@@ -1050,8 +1039,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 			continue;
 		}
 
+		printf("CREATING STATE FOR: %d\n", nfa_cursor->opt);
+
 		switch(nfa_cursor->opt){
-			case SPLIT_ONE_OR_MORE:
+			case SPLIT_ZERO_OR_ONE:
+				//Call this helper function and get out
 				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 				break;
 			case SPLIT_ALTERNATE:	
@@ -1069,8 +1061,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 				temp = create_DFA_state(nfa_cursor);
 				break;
 		}
-		//If we have a type 2 split, we know that the next guy will already be accounted for
-		
 	
 		//Patch in all of our new states
 		for(u_int16_t i = 0; i < temp->nfa_state_list.length; i++){
@@ -1078,6 +1068,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 			u_int16_t opt = temp->nfa_state_list.states[i]->opt;
 			//Patch in all of the new states
 			previous->transitions[opt] = temp;
+			printf("ADDED TRANSITION FOR: %d\n", opt);
 		}
 
 		//Advance the current DFA pointer

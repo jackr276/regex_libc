@@ -10,7 +10,7 @@
 #define ACCEPTING 131
 #define NFA_END 150
 //Split_one_or_more is specifically used for the question mark(?) operator
-#define SPLIT_ONE_OR_MORE 127 
+#define SPLIT_ZERO_OR_ONE 127 
 //Split_alternate is specifically used for the alternation(|) operator
 #define SPLIT_ALTERNATE 128
 //Split Kleene is specifically used for the kleene star(*) operator
