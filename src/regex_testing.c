@@ -43,6 +43,13 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
+			//Define a test string -- should fail
+			test_string = "aaa  b-b#bbbbabclmnop";
+			printf("TEST STRING: %s\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
 			//Destroy the regex
 			destroy_regex(tester);
 
@@ -107,6 +114,13 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 
 			//Define a test string
 			test_string = "aaabbbbbbabcdlmnop";
+			printf("TEST STRING: %s\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aacbbbbbbacdlmnop";
 			printf("TEST STRING: %s\n", test_string);
 			
 			//Test the matching

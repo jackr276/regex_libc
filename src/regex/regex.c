@@ -567,7 +567,7 @@ static void print_DFA(DFA_state_t* dfa){
 
 		//Print all of the states that we are able to reach from this state
 		printf("}, reachable: {");
-		for(u_int16_t i = 0; i < 130; i++){
+		for(u_int16_t i = 0; i < 140; i++){
 			if(cursor->transitions[i] != NULL){
 				i == ACCEPTING ? printf("ACCEPTING, ") : printf("%c, ", i);
 			}
@@ -997,15 +997,15 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
 }
 
 
-static DFA_state_t* merge_alternate_states(DFA_state_t* left_edge, DFA_state_t* right_edge){
+static DFA_state_t* merge_alternate_states(DFA_state_t* left_opt, DFA_state_t* right_opt){
 	//Patch these in together
-	for(u_int16_t i = 0; i < right_edge->nfa_state_list.length; i++){
+	for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
 		//Add them into state 1
-		left_edge->nfa_state_list.states[left_edge->nfa_state_list.length] = right_edge->nfa_state_list.states[i];
-		left_edge->nfa_state_list.length += 1;
+		left_opt->nfa_state_list.states[left_opt->nfa_state_list.length] = right_opt->nfa_state_list.states[i];
+		left_opt->nfa_state_list.length += 1;
 	}
 
-	return left_edge;
+	return left_opt;
 }
 
 
@@ -1019,8 +1019,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	DFA_state_t* previous;
 	DFA_state_t* temp;
 	DFA_state_t* repeater;
-	DFA_state_t* left_edge;
-	DFA_state_t* right_edge;
+	DFA_state_t* left_opt;
+	DFA_state_t* right_opt;
 
 	//A dummy start state to enter into
 	DFA_state_t* dfa_start = create_DFA_state(NULL);
@@ -1039,23 +1039,28 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 			continue;
 		}
 
-		printf("CREATING STATE FOR: %d\n", nfa_cursor->opt);
-
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
 				//Call this helper function and get out
 				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+				//We'll actually want to see this state again
+				nfa_cursor->next->visited = 0;
 				break;
 			case SPLIT_ALTERNATE:	
 				//TODO i do not work
-				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+				left_opt = create_DFA(nfa_cursor->next, mode);
+				nfa_cursor->next->visited = 3;
+				right_opt = create_DFA(nfa_cursor->next_opt, mode);
+				nfa_cursor->next_opt->visited = 3;
+				temp = merge_alternate_states(left_opt, right_opt);
 				break;
 			case SPLIT_KLEENE:
 				//This is the state that will repeat
 				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 				//This state points to itself because a kleene state can always reach itself
 				temp->transitions[nfa_cursor->next_opt->opt] = temp;
-				nfa_cursor->visited = 0;
+				nfa_cursor->next->visited = 0;
+				nfa_cursor->next_opt->visited = 0;
 				break;
 			default:
 				temp = create_DFA_state(nfa_cursor);
@@ -1075,6 +1080,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 		previous->next = temp;
 		previous = temp;
 
+		//We've now visited this state
+		nfa_cursor->visited = 3;
 		//Advance the pointer
 		nfa_cursor = nfa_cursor->next;
 	}
