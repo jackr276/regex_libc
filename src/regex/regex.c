@@ -1047,12 +1047,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 				nfa_cursor->next->visited = 0;
 				break;
 			case SPLIT_ALTERNATE:	
-				//TODO i do not work
-				left_opt = create_DFA(nfa_cursor->next, mode);
-				nfa_cursor->next->visited = 3;
-				right_opt = create_DFA(nfa_cursor->next_opt, mode);
-				nfa_cursor->next_opt->visited = 3;
-				temp = merge_alternate_states(left_opt, right_opt);
+				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
 				break;
 			case SPLIT_KLEENE:
 				//This is the state that will repeat
