@@ -1017,6 +1017,7 @@ static DFA_state_t* merge_alternate_states(DFA_state_t* left_opt, DFA_state_t* r
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	//The starting state for our DFA
 	DFA_state_t* previous;
+	u_int16_t previous_opt;
 	DFA_state_t* temp;
 	DFA_state_t* repeater;
 	DFA_state_t* left_opt;
@@ -1027,6 +1028,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 
 	//Advance previous
 	previous = dfa_start;	
+	previous_opt = 0;
 
 	//Maintain a cursor to the current NFA state
 	NFA_state_t* nfa_cursor = nfa_start;
@@ -1057,6 +1059,15 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 				nfa_cursor->next->visited = 0;
 				nfa_cursor->next_opt->visited = 0;
 				break;
+			case SPLIT_POSITIVE_CLOSURE:
+				//TODO This one works but seems fishy to me, definitely needs more testing
+				//This state will also repeat
+				temp = previous;
+				//Set this state to point back to itself
+				previous->transitions[previous_opt] = previous;
+				//Should already be reachable
+				nfa_cursor->next->visited = 3;
+			
 			default:
 				temp = create_DFA_state(nfa_cursor);
 				break;
@@ -1074,6 +1085,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 		//Advance the current DFA pointer
 		previous->next = temp;
 		previous = temp;
+		//Update this for later use
+		previous_opt = nfa_cursor->opt;
 
 		//We've now visited this state
 		nfa_cursor->visited = 3;
