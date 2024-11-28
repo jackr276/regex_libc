@@ -1069,8 +1069,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				break;
 			case SPLIT_ALTERNATE:	
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(nfa_cursor->next, mode, 0);
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
+				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1126,6 +1126,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			printf("ADDED TRANSITION FOR: %d\n", opt);
 		}
 
+		//If we did this here we will need to merge some states
+		//Each state carries with it a linked list of all other 
+		//states created after in the order of object creation
 		/*
 		if(left_opt_mem != NULL && right_opt_mem != NULL){
 
@@ -1134,7 +1137,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			while(previous->next != NULL){
 				previous = previous->next;
 			}
-			printf("HERE\n");
 
 			previous->next = right_opt_mem;
 			previous = right_opt_mem;
@@ -1144,9 +1146,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		}
 		*/
 
+
 		//Advance the current DFA pointer
 		previous->next = temp;
 		previous = temp;
+
 		//Update this for later use
 		previous_opt = nfa_cursor->opt;
 
@@ -1317,7 +1321,7 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
-		if(current_state->transitions[(u_int16_t)ch] != NULL || current_state->transitions[ACCEPTING] != NULL){
+		if(current_state->transitions[(u_int16_t)ch] != NULL){
 			//If we're in verbose mode, print this out
 			if(mode == REGEX_VERBOSE && current_state->transitions[(u_int16_t)ch] != NULL){
 				printf("Pattern continued/started with character: %c\n", ch);
@@ -1331,9 +1335,22 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 			//Advance this up to be the next state
 			if(current_state->transitions[(u_int16_t)ch] != NULL){
 				current_state = current_state->transitions[(u_int16_t)ch];
+
 			} else {
-				current_state = current_state->transitions[ACCEPTING];
+				if(mode == REGEX_VERBOSE){
+					//Reset these two parameters to reset the search
+					match->match_start_idx = current_index;
+					match->match_end_idx = current_index;
+
+					//We are now back in the start state
+					current_state = start_state;
+
+					printf("No pattern found for character: %c\n", ch);
+				}
 			}
+		
+		} else if(current_state->transitions[ACCEPTING] != NULL){
+			current_state = current_state->transitions[ACCEPTING];
 		
 		//Otherwise, we didn't find anything, so we need to reset
 		} else {
