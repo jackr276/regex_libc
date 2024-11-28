@@ -1054,7 +1054,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_ZERO_OR_ONE:
 				//Call this helper function and get out
 				left_opt = create_DFA(nfa_cursor->next, mode, 0);
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1071,12 +1071,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Create two separate sub-DFAs
 				left_opt = create_DFA(nfa_cursor->next, mode, 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
-//				print_DFA(left_opt);
-//				print_DFA(right_opt);
 
 				//Save these for later
-			//	left_opt_mem = left_opt;
-			//	right_opt_mem = right_opt;
+				left_opt_mem = left_opt;
+				right_opt_mem = right_opt;
 
 				//Advance past the dummy head
 				left_opt = left_opt->next;
@@ -1128,6 +1126,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			printf("ADDED TRANSITION FOR: %d\n", opt);
 		}
 
+		/*
 		if(left_opt_mem != NULL && right_opt_mem != NULL){
 
 			previous->next = left_opt_mem;
@@ -1143,6 +1142,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				previous = previous->next;
 			}
 		}
+		*/
 
 		//Advance the current DFA pointer
 		previous->next = temp;
