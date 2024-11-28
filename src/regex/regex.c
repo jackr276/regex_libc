@@ -997,6 +997,9 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
 }
 
 
+/**
+ * Merge two previously created DFA states
+ */
 static DFA_state_t* merge_alternate_states(DFA_state_t* left_opt, DFA_state_t* right_opt){
 	//Patch these in together
 	for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
@@ -1036,7 +1039,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 	//Iterate through every NFA state. We have a 1-1 nfa-state dfa-state translation
 	while(nfa_cursor != NULL){
 		//If we've already gotten to this guy from a split, we'll move right on
-		if(nfa_cursor->visited == 3){
+		if(nfa_cursor->visited == 3 && nfa_cursor->opt != ACCEPTING){
 			nfa_cursor = nfa_cursor->next;
 			continue;
 		}
@@ -1049,7 +1052,13 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 				nfa_cursor->next->visited = 0;
 				break;
 			case SPLIT_ALTERNATE:	
-				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
+				//Create two separate sub-DFAs
+				left_opt = create_DFA(nfa_cursor->next, mode);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode);
+				//Advance past the dummy head
+				left_opt = left_opt->next;
+				right_opt = right_opt->next;
+				temp = merge_alternate_states(left_opt, right_opt);
 				break;
 			case SPLIT_KLEENE:
 				//This is the state that will repeat
@@ -1067,7 +1076,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 				previous->transitions[previous_opt] = previous;
 				//Should already be reachable
 				nfa_cursor->next->visited = 3;
-			
+				break;
 			default:
 				temp = create_DFA_state(nfa_cursor);
 				break;

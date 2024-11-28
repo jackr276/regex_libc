@@ -26,6 +26,6 @@ test_all:
 	$(OUT_DIR)/regex_test 
 
 clean:
-	rm -r $(OUT_DIR)/*
+	rm -f $(OUT_DIR)/*
 
 
