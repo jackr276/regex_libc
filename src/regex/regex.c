@@ -1071,8 +1071,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Create two separate sub-DFAs
 				left_opt = create_DFA(nfa_cursor->next, mode, 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
-				print_DFA(left_opt);
-				print_DFA(right_opt);
+//				print_DFA(left_opt);
+//				print_DFA(right_opt);
 
 				//Save these for later
 			//	left_opt_mem = left_opt;

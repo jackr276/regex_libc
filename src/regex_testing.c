@@ -111,7 +111,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			printf("Testing concatenation with | operator:\n");
 
 			//Define the regex
-			tester = define_regular_expression("ab|d", REGEX_VERBOSE);
+			tester = define_regular_expression("ab|d", REGEX_SILENT);
 
 			//Define a test string
 			test_string = "aaabbbbbbabcdlmnop";
