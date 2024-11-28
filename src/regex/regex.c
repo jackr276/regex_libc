@@ -1017,14 +1017,16 @@ static DFA_state_t* merge_alternate_states(DFA_state_t* left_opt, DFA_state_t* r
  * method. We will recursively figure out which states are reachable from other states. Our
  * new linked list of states should help us with this
  */
-static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
+static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int16_t flag_states){
 	//The starting state for our DFA
 	DFA_state_t* previous;
 	u_int16_t previous_opt;
 	DFA_state_t* temp;
 	DFA_state_t* repeater;
 	DFA_state_t* left_opt;
+	DFA_state_t* left_opt_mem;
 	DFA_state_t* right_opt;
+	DFA_state_t* right_opt_mem;
 
 	//A dummy start state to enter into
 	DFA_state_t* dfa_start = create_DFA_state(NULL);
@@ -1038,6 +1040,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 
 	//Iterate through every NFA state. We have a 1-1 nfa-state dfa-state translation
 	while(nfa_cursor != NULL){
+		//Reset these here
+		left_opt_mem = NULL;
+		right_opt_mem = NULL;
+
 		//If we've already gotten to this guy from a split, we'll move right on
 		if(nfa_cursor->visited == 3 && nfa_cursor->opt != ACCEPTING){
 			nfa_cursor = nfa_cursor->next;
@@ -1047,17 +1053,36 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
 				//Call this helper function and get out
-				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
-				//We'll actually want to see this state again
+				left_opt = create_DFA(nfa_cursor->next, mode, 0);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				print_DFA(left_opt);
+				print_DFA(right_opt);
+
+				//Save these for later
+			//	left_opt_mem = left_opt;
+			//	right_opt_mem = right_opt;
+
+				//Advance these up
+				left_opt = left_opt->next;
+				right_opt = right_opt->next;
+
+				//Merge the two alternate states
+				temp = merge_alternate_states(left_opt, right_opt);
 				nfa_cursor->next->visited = 0;
 				break;
 			case SPLIT_ALTERNATE:	
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(nfa_cursor->next, mode);
-				right_opt = create_DFA(nfa_cursor->next_opt, mode);
+				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+
+				//Save these for later
+			//	left_opt_mem = left_opt;
+			//	right_opt_mem = right_opt;
+
 				//Advance past the dummy head
 				left_opt = left_opt->next;
 				right_opt = right_opt->next;
+
 				temp = merge_alternate_states(left_opt, right_opt);
 				break;
 			case SPLIT_KLEENE:
@@ -1091,14 +1116,25 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode){
 			printf("ADDED TRANSITION FOR: %d\n", opt);
 		}
 
+		if(left_opt_mem != NULL && right_opt_mem != NULL){
+			previous->next = left_opt_mem;
+			previous = left_opt_mem;
+			previous->next = right_opt_mem;
+			previous = right_opt_mem;
+		}
+
 		//Advance the current DFA pointer
 		previous->next = temp;
 		previous = temp;
 		//Update this for later use
 		previous_opt = nfa_cursor->opt;
 
-		//We've now visited this state
-		nfa_cursor->visited = 3;
+		//If we are flagging states, there may be times when we don't want to
+		if(flag_states == 1){
+			//We've now visited this state
+			nfa_cursor->visited = 3;
+		}
+
 		//Advance the pointer
 		nfa_cursor = nfa_cursor->next;
 	}
@@ -1200,7 +1236,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex.DFA = create_DFA(regex.NFA, mode);
+	regex.DFA = create_DFA(regex.NFA, mode, 1);
 
 	//If it didn't work
 	if(regex.DFA == NULL){
@@ -1260,9 +1296,9 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
-		if(current_state->transitions[(u_int16_t)ch] != NULL){
+		if(current_state->transitions[(u_int16_t)ch] != NULL || current_state->transitions[ACCEPTING] != NULL){
 			//If we're in verbose mode, print this out
-			if(mode == REGEX_VERBOSE){
+			if(mode == REGEX_VERBOSE && current_state->transitions[(u_int16_t)ch] != NULL){
 				printf("Pattern continued/started with character: %c\n", ch);
 			}
 
@@ -1272,7 +1308,11 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 			match->match_end_idx = current_index;
 
 			//Advance this up to be the next state
-			current_state = current_state->transitions[(u_int16_t)ch];
+			if(current_state->transitions[(u_int16_t)ch] != NULL){
+				current_state = current_state->transitions[(u_int16_t)ch];
+			} else {
+				current_state = current_state->transitions[ACCEPTING];
+			}
 		
 		//Otherwise, we didn't find anything, so we need to reset
 		} else {
@@ -1293,13 +1333,15 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 		}
 
 		//If the current state contains the accepting state, this is our base case
-		if(current_state->transitions[ACCEPTING] != 0){
-			//We've found the match
-			match->status = MATCH_FOUND;
+		for(u_int16_t i = 0; i < current_state->nfa_state_list.length; i++){
+			if(current_state->nfa_state_list.states[i]->opt == ACCEPTING){
+				//We've found the match
+				match->status = MATCH_FOUND;
 
-			if(mode == REGEX_VERBOSE){
-				printf("Match found!\n");
-				return;
+				if(mode == REGEX_VERBOSE){
+					printf("Match found!\n");
+					return;
+				}
 			}
 		}
 
