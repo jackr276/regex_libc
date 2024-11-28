@@ -92,6 +92,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			printf("Testing the explicit escape character ~:\n");
 
 			test_string = "aaaaaaab(cd)a";
+			printf("TEST STRING: %s\n", test_string);
 			//Define the regex
 			tester = define_regular_expression("ab~(cd~)a", REGEX_VERBOSE);
 
@@ -140,7 +141,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			printf("Testing the * operator:\n");
 
 			//Initialization
-			tester = define_regular_expression("ab*c", REGEX_VERBOSE);
+			tester = define_regular_expression("ab*c", REGEX_SILENT);
 
 			//Define the test string
 			test_string = "aaabbbbbbc";
@@ -162,7 +163,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			printf("Testing the + operator:\n");
 			
 			//Initialization
-			tester = define_regular_expression("ab+c",REGEX_VERBOSE);
+			tester = define_regular_expression("ab+c", REGEX_SILENT);
 		
 			//Define a test string
 			test_string = "aaabbbbcd";
@@ -184,7 +185,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			printf("Testing the * operator alone:\n");
 			
 			//Initialization
-			tester = define_regular_expression("aa*b",REGEX_VERBOSE);
+			tester = define_regular_expression("aa*b",REGEX_SILENT);
 		
 			//Define a test string
 			test_string = "aaabbbbcd";
