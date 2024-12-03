@@ -180,7 +180,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			}
 		
 			
-		//Case 6 tests positive closure
+		//Case 7 tests positive closure
 		case 7:
 			printf("Testing the * operator alone:\n");
 			
@@ -200,6 +200,39 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			if(fall_through == 0){
 				break;
 			}
+
+		case 8:
+			printf("Testing associativity\n");
+			
+			//Initialization
+			tester = define_regular_expression("a(ab)*", REGEX_VERBOSE);
+
+			//We should match here
+			test_string = "abcdabababababababd";
+
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+			
+			destroy_regex(tester);
+				
+			if(fall_through == 0){
+				break;
+			}
+
+		case 9:
+			printf("More associativity tests\n");
+
+			//Initialization
+			tester = define_regular_expression("a(bc)?d", REGEX_VERBOSE);
+
+			//We should match
+			test_string = "zyxwvutabcd";
+				regex_match(tester, test_string, 0, REGEX_VERBOSE);
+			
+			destroy_regex(tester);
+				
+			if(fall_through == 0){
+				break;
+			}	
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:

@@ -1001,6 +1001,7 @@ static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* 
 /**
  * Merge two previously created DFA states
  */
+//TODO Make this a sort of "copy constructor". It shouldn't be mutating the left_opt as it is currenlty
 static DFA_state_t* merge_alternate_states(DFA_state_t* left_opt, DFA_state_t* right_opt){
 	//Patch these in together
 	for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
@@ -1046,7 +1047,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		right_opt_mem = NULL;
 
 		//If we've already gotten to this guy from a split, we'll move right on
-		if(nfa_cursor->visited == 3 && nfa_cursor->opt != ACCEPTING){
+		if(nfa_cursor->visited == 3 /*&& nfa_cursor->opt != ACCEPTING*/){
 			nfa_cursor = nfa_cursor->next;
 			continue;
 		}
@@ -1054,8 +1055,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
 				//Call this helper function and get out
-				left_opt = create_DFA(nfa_cursor->next, mode, 0);
+				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				//Exclusively get the ones that the right DFA has(optional one)
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
+
+				print_DFA(right_opt);
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1065,8 +1069,26 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				left_opt = left_opt->next;
 				right_opt = right_opt->next;
 
-				//Merge the two alternate states
+				//Make everything at the start of the right DFA reachable from the left one
 				temp = merge_alternate_states(left_opt, right_opt);
+
+				DFA_state_t* cursor = right_opt;
+				//Advance to very end
+				while(cursor->next != NULL){
+					cursor = cursor->next;
+				}
+
+
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					//Grab the character
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					//Patch in all of the new states
+					cursor->transitions[opt] = left_opt;
+					printf("ADDED TRANSITION FOR: %d\n", opt);
+				}
+
+				print_DFA(right_opt);
+
 				break;
 			case SPLIT_ALTERNATE:	
 				//Create two separate sub-DFAs
@@ -1084,6 +1106,17 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				temp = merge_alternate_states(left_opt, right_opt);
 				break;
 			case SPLIT_KLEENE:
+				//This should be what repeats
+				/*
+				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				left_opt = left_opt->next;
+				right_opt = right_opt->next;
+				print_DFA(right_opt);
+				
+				temp = merge_alternate_states(left_opt, right_opt);	
+				*/
+				
 				
 				//Already works but not confident in
 				//This is the state that will repeat
@@ -1092,6 +1125,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				temp->transitions[nfa_cursor->next_opt->opt] = temp;
 				nfa_cursor->next->visited = 0;
 				nfa_cursor->next_opt->visited = 0;
+				
 				
 				/*
 				//Make a simple state for the left one
@@ -1130,7 +1164,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		//If we did this here we will need to merge some states
 		//Each state carries with it a linked list of all other 
 		//states created after in the order of object creation
-		/*
+	
+		/**
 		if(left_opt_mem != NULL && right_opt_mem != NULL){
 
 			previous->next = left_opt_mem;
@@ -1146,6 +1181,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			}
 		}
 		*/
+	
 
 
 		//Advance the current DFA pointer
