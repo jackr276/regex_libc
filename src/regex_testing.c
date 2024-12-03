@@ -185,7 +185,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			printf("Testing the * operator alone:\n");
 			
 			//Initialization
-			tester = define_regular_expression("aa*b",REGEX_SILENT);
+			tester = define_regular_expression("aa*b", REGEX_VERBOSE);
 		
 			//Define a test string
 			test_string = "aaabbbbcd";

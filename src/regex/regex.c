@@ -560,9 +560,10 @@ static void print_DFA(DFA_state_t* dfa){
 
 	while(cursor != NULL){
 		printf("State %d, internal states: {", i);
-		for(u_int16_t i = 0; i < cursor->nfa_state_list.length; i++){
+		for(u_int16_t i = 0; i < cursor->nfa_state_list.length && cursor->nfa_state_list.states[i] != NULL; i++){
 			u_int16_t opt = cursor->nfa_state_list.states[i]->opt;
-			opt == ACCEPTING ? printf("ACCEPTING") : printf("%c, ", opt);
+			//Printing internals here
+			i == ACCEPTING ? printf("ACCEPTING, ") : printf("%c, ", opt);
 		}
 
 		//Print all of the states that we are able to reach from this state
