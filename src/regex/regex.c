@@ -1054,40 +1054,77 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
-				//Call this helper function and get out
+				//Create the DFA for the straight path, marking each state as "off limits" whenever we see it.
+				//This marking of off limits will ensure that the next function call will not retrace this
+				//one's steps
 				left_opt = create_DFA(nfa_cursor->next, mode, 1);
-				//Exclusively get the ones that the right DFA has(optional one)
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
 
-				print_DFA(right_opt);
+				//Create the right sub-DFA that is the optional "0 or 1" DFA
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
-				//Save these for later
+				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
 
-				//Advance these up
+				//Advance these up(remember, we have "dummy heads")
 				left_opt = left_opt->next;
 				right_opt = right_opt->next;
 
-				//Make everything at the start of the right DFA reachable from the left one
-				temp = merge_alternate_states(left_opt, right_opt);
 
+				/**
+				 * We now have
+				 * 	The "previous" state, which is what came before the DFA
+				 * 	Left_opt: the entire DFA that follows the nonoptional path
+				 * 	Right_opt: the entire optional path that represents our "0 or 1"
+				 *
+				 * 	We'll now do 2 things:
+				 * 		Patch in "previous" to point to both left_opt and right_opt
+				 * 		patch in the end of right_opt to point to left_opt
+				 */
+
+				//Make everything in previous reference point to left_opt
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = left_opt;
+				}
+
+				//Make everything in previous point to right_opt
+				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
+					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = right_opt;
+				}
+
+				//Now we'll need to ensure that right_opt(At the very end) points to left_opt
+
+				//Let's first advance to the very end of right_opt
 				DFA_state_t* cursor = right_opt;
 				//Advance to very end
 				while(cursor->next != NULL){
 					cursor = cursor->next;
 				}
 
-
+				//Now cursor has the end of right_opt, so let's make it point to left_opt
 				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					//Grab the character
 					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					//Patch in all of the new states
 					cursor->transitions[opt] = left_opt;
-					printf("ADDED TRANSITION FOR: %d\n", opt);
 				}
 
-				print_DFA(right_opt);
+				/**
+				previous->next = left_opt_mem;
+				previous = left_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
+
+				previous->next = right_opt_mem;
+				previous = right_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
+				*/
+
+				//In theory the entire thing should now be done so
+				return dfa_start;
 
 				break;
 			case SPLIT_ALTERNATE:	
@@ -1182,7 +1219,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		}
 		*/
 	
-
 
 		//Advance the current DFA pointer
 		previous->next = temp;
