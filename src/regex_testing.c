@@ -225,7 +225,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			tester = define_regular_expression("a(bc)?d", REGEX_VERBOSE);
 
 			//We should match
-			test_string = "zyxwvutabcd";
+			test_string = "zyxwvutabcdlmnop";
 				regex_match(tester, test_string, 0, REGEX_VERBOSE);
 			
 			destroy_regex(tester);
@@ -233,6 +233,16 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			if(fall_through == 0){
 				break;
 			}	
+
+		case 10:
+			printf("More alternation tests\n");
+
+		/**
+		 * TODO this still segfaults, some issue with NFA creation
+		*/
+			//Initialization
+//			tester = define_regular_expression("(abcd|acd)a", REGEX_VERBOSE);
+		
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:

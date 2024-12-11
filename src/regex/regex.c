@@ -1052,6 +1052,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			continue;
 		}
 
+		//We have different processing rules for each of our special cases. The default is of course that we just have a char
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
 				//Create the DFA for the straight path, marking each state as "off limits" whenever we see it.
@@ -1126,10 +1127,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//In theory the entire thing should now be done so
 				return dfa_start;
 
-				break;
+			//Handle an alternate split
 			case SPLIT_ALTERNATE:	
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				left_opt = create_DFA(nfa_cursor->next, mode, 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
 				//Save these for later
@@ -1140,8 +1141,29 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				left_opt = left_opt->next;
 				right_opt = right_opt->next;
 
-				temp = merge_alternate_states(left_opt, right_opt);
-				break;
+				/**
+				 * To patch this DFA in, we'll make everything in previous point to both the left
+				 * and right sub-DFAs. Unlike with a 0 or 1 split, these two separate DFAs should
+				 * never point to one another
+				 */
+				
+				//Patching in left_opt
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = left_opt;
+				}
+
+				//Patching in right_opt
+				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = right_opt;
+				}
+
+				//Get out
+				return dfa_start;
+
 			case SPLIT_KLEENE:
 				//This should be what repeats
 				/*
