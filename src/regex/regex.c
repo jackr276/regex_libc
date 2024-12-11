@@ -584,6 +584,50 @@ static void print_DFA(DFA_state_t* dfa){
 
 
 /**
+ * Create a new state in memory that is completely identical to "state"
+ */
+static NFA_state_t* copy_state(NFA_state_t* state){
+	//Create a new state
+	NFA_state_t* copy = (NFA_state_t*)malloc(sizeof(NFA_state_t));
+
+	//Perform a deep copy
+	copy->visited = 0;
+	copy->next = state->next;
+	copy->opt = state->opt;
+	copy->next_opt = state->next_opt;
+	copy->next_created = state->next_created;
+	
+	return copy;
+}
+
+
+/**
+ * Create a deep copy of a fragment that is totally independent from
+ * the predecessor in memory
+ */
+static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag){
+	//Create the fragment copy
+	NFA_fragement_t* copy = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
+
+	//Copy the start state
+	copy->start = copy_state(frag->start);
+
+	//Grab a cursor to iterate through
+	fringe_states_t* cursor = frag->fringe_states;
+	fringe_states_t* current_fringe_state = copy->fringe_states;
+
+	while(cursor != NULL){
+		current_fringe_state = malloc(sizeof(fringe_states_t));
+		current_fringe_state->state = cursor->state;
+		current_fringe_state->next = cursor->next;
+
+		cursor = cursor->next;
+	}
+
+	return copy;
+}
+
+/**
  * Create an NFA from a postfix regular expression FIXME does not work for () combined with *, | or +
  */
 static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
@@ -721,10 +765,11 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 			case '+':
 				//Grab the most recent fragment
 				frag_1 = pop(stack);
+				frag_2 = copy_fragment(frag_1);
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
-				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_2->start, num_states);
 	
 				//If this is the very first state then it is our origin for the linked list
 				if(num_processed == 0){
@@ -1236,15 +1281,80 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Get out
 				return dfa_start;
 
+			//Handle the "1 or more" case
 			case SPLIT_POSITIVE_CLOSURE:
-				//TODO This one works but seems fishy to me, definitely needs more testing
-				//This state will also repeat
+				//Avoid an infinite loop
+				nfa_cursor->visited = 3;
+				//Create the left DFA
+				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				//Create the right DFA
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				
+
+				//Save these for later
+				left_opt_mem = left_opt;
+				right_opt_mem = right_opt;
+
+				//Advance these so that we actually have them
+				left_opt = left_opt->next;
+				right_opt = right_opt->next;
+
+				/**
+				 * We'll now patch in the "left_opt" such that previous points to it. We'll
+				 * then patch in right opt as well. Finally, we'll make it so that right_opt
+				 * points back to its own beginning
+				 */
+				
+				//Patching in left_opt
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = left_opt;
+				}
+					
+				//Patching in right_opt
+				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = right_opt;
+				}
+
+
+				//We'll now need to navigate to the end of the right opt repeater
+				//sub-DFA
+				cursor = right_opt;
+
+				
+				while(cursor->next != NULL){
+					cursor = cursor->next;
+				}
+
+				//Now that we're here, cursor holds the very end of the right sub-DFA
+				//Everything that we have in the cursor must point back to the left DFA
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					cursor->transitions[opt] = left_opt;
+				}
+					
+				//Patching in right_opt
+				//Everything that we have in the cursor must also point back to the right DFA
+				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
+					cursor->transitions[opt] = right_opt;
+				}
+			
+
+				/**	
 				temp = previous;
 				//Set this state to point back to itself
 				previous->transitions[previous_opt] = previous;
 				//Should already be reachable
 				nfa_cursor->next->visited = 3;
-				break;
+				*/
+				//Get out
+				return dfa_start;
 			default:
 				temp = create_DFA_state(nfa_cursor);
 				break;
@@ -1395,7 +1505,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex.DFA = create_DFA(regex.NFA, mode, 1);
+	regex.DFA = create_DFA(regex.NFA, mode, 0);
 
 	//If it didn't work
 	if(regex.DFA == NULL){

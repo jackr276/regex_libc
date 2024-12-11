@@ -16,8 +16,8 @@
 * let's us know that we want to test everything after that case
 */
 void test_case_run(u_int8_t test_case){
-	regex_t tester;
 	char* test_string;
+	regex_t tester;
 
 	//Go through all of our test cases. Designed so that we can always add more
 	switch(test_case){
@@ -46,14 +46,14 @@ void test_case_run(u_int8_t test_case){
 			destroy_regex(tester);
 
 			//Break out if we don't fall through
-			break;
+			return;
 			
 		//Case 2 tests the 0 or 1 ? operator
 		case 2:
 			printf("Testing concatenation with ? operator:\n");
 
 			//Define the regex
-			tester = define_regular_expression("abc?d", REGEX_VERBOSE);
+			regex_t tester = define_regular_expression("abc?d", REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "aaabbbbbbabcdlmnop";
@@ -73,7 +73,7 @@ void test_case_run(u_int8_t test_case){
 			destroy_regex(tester);
 
 			//Break out if we don't fall through
-			break;
+			return;
 			
 		//Case 3 tests using the escape character ~
 		case 3:
@@ -90,7 +90,7 @@ void test_case_run(u_int8_t test_case){
 			//Ensure that this works
 			destroy_regex(tester);
 
-			break;
+			return;
 			
 		case 4:
 			printf("Testing concatenation with | operator:\n");
@@ -114,9 +114,8 @@ void test_case_run(u_int8_t test_case){
 
 			//Destroy the regex
 			destroy_regex(tester);
-
-
-			break;
+	
+			return;
 			
 		//Case 5 tests kleene star
 		case 5:
@@ -135,7 +134,7 @@ void test_case_run(u_int8_t test_case){
 			//Destroy
 			destroy_regex(tester);
 	
-			break;
+			return;
 		
 		//Case 6 tests positive closure
 		case 6:
@@ -149,12 +148,18 @@ void test_case_run(u_int8_t test_case){
 
 			//Test the matching, we should get one here
 			regex_match(tester, test_string, 0,  REGEX_VERBOSE);
-			
+
+			//Define a test string
+			test_string = "aaacd";
+
+			//Test the matching, we should fail here
+			regex_match(tester, test_string, 0,  REGEX_VERBOSE);
+
 			//Destroy 
 			destroy_regex(tester);
 		
 			//Break out if we don't fall through
-			break;
+			return;
 		
 			
 		//Case 7 tests positive closure
@@ -173,22 +178,22 @@ void test_case_run(u_int8_t test_case){
 			//Destroy 
 			destroy_regex(tester);
 		
-			break;
+			return;
 
 		case 8:
 			printf("Testing associativity\n");
 			
 			//Initialization
-			tester = define_regular_expression("a(ab)*", REGEX_VERBOSE);
+			tester = define_regular_expression("a(bc)*", REGEX_VERBOSE);
 
 			//We should match here
-			test_string = "abcdabababababababd";
+			test_string = "bcdabcbcbcbcbcd";
 
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 			
 			destroy_regex(tester);
 				
-			break;
+			return;
 
 		case 9:
 			printf("More associativity tests\n");
@@ -202,7 +207,7 @@ void test_case_run(u_int8_t test_case){
 			
 			destroy_regex(tester);
 			
-			break;
+			return;
 				
 		case 10:
 			printf("Chaining tests\n");
@@ -223,7 +228,7 @@ void test_case_run(u_int8_t test_case){
 			}
 			
 			**/
-			break;
+			return;
 		
 			
 		case 11:
@@ -235,7 +240,7 @@ void test_case_run(u_int8_t test_case){
 			//Initialization
 //			tester = define_regular_expression("(abcd|acd)a", REGEX_VERBOSE);
 		
-		break;
+		return;
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
