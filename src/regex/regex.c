@@ -551,6 +551,7 @@ static void print_NFA(NFA_state_t* nfa){
 static void print_DFA(DFA_state_t* dfa){
 	//If the state is null we'll stop
 	if(dfa == NULL){
+		printf("DFA was not initialized");
 		return;
 	}
 
@@ -1110,6 +1111,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
+				print_DFA(right_opt->next);
 				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
@@ -1117,7 +1119,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Advance these up(remember, we have "dummy heads")
 				left_opt = left_opt->next;
 				right_opt = right_opt->next;
-
 
 				/**
 				 * We now have

@@ -210,24 +210,19 @@ void test_case_run(u_int8_t test_case){
 			return;
 				
 		case 10:
-			printf("Chaining tests\n");
+			printf("Chaining Kleene Splits\n");
 
-			/**
+			
 			//Initialization
-			tester = define_regular_expression("a(bc)?dlmno(p)?d", REGEX_VERBOSE);
+			tester = define_regular_expression("a(bc)*dlmnop*d", REGEX_VERBOSE);
 
 			//Should have a match here
-			test_string = "asdklf;asdfadlmnopd";
+			test_string = "asdklf;asdfabcbcdlmnopd";
 			
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 		
 			destroy_regex(tester);	
 			
-			if(fall_through == 0){
-				break;
-			}
-			
-			**/
 			return;
 		
 			
@@ -238,9 +233,25 @@ void test_case_run(u_int8_t test_case){
 		 * TODO this still segfaults, some issue with NFA creation
 		*/
 			//Initialization
-//			tester = define_regular_expression("(abcd|acd)a", REGEX_VERBOSE);
+			tester = define_regular_expression("ab|dabc*", REGEX_VERBOSE);
 		
 		return;
+
+		case 12:
+			printf("Chaining Positive Closures\n");
+
+			
+			//Initialization
+			tester = define_regular_expression("a(bc)+dlmnop+d", REGEX_VERBOSE);
+
+			//Should have a match here
+			test_string = "asdklf;asdfabcdlmnopd";
+			
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+		
+			destroy_regex(tester);	
+			
+			return;
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
