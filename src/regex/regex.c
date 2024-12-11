@@ -1024,11 +1024,13 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 	DFA_state_t* previous;
 	u_int16_t previous_opt;
 	DFA_state_t* temp;
-	DFA_state_t* repeater;
 	DFA_state_t* left_opt;
 	DFA_state_t* left_opt_mem;
 	DFA_state_t* right_opt;
 	DFA_state_t* right_opt_mem;
+
+	//The cursor that we may or may not use
+	DFA_state_t* cursor;
 
 	//A dummy start state to enter into
 	DFA_state_t* dfa_start = create_DFA_state(NULL);
@@ -1098,7 +1100,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Now we'll need to ensure that right_opt(At the very end) points to left_opt
 
 				//Let's first advance to the very end of right_opt
-				DFA_state_t* cursor = right_opt;
+				cursor = right_opt;
 				//Advance to very end
 				while(cursor->next != NULL){
 					cursor = cursor->next;
@@ -1164,39 +1166,76 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Get out
 				return dfa_start;
 
+			//Handle the "0 or more" case, better known as Kleene star
 			case SPLIT_KLEENE:
-				//This should be what repeats
-				/*
+				//Mark as seen before we go any further
+				nfa_cursor->visited = 3;
+
+				//Create the entire left sub_dfa(this one does not repeat)
 				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				//Here is our actual "repeater"
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+
+
+				//Save these for later
+				left_opt_mem = left_opt;
+				right_opt_mem = right_opt;
+
+				//Advance these so that we actually have them
 				left_opt = left_opt->next;
 				right_opt = right_opt->next;
-				print_DFA(right_opt);
-				
-				temp = merge_alternate_states(left_opt, right_opt);	
-				*/
-				
-				
-				//Already works but not confident in
-				//This is the state that will repeat
-				temp = create_merged_states(nfa_cursor->next, nfa_cursor->next_opt);
-				//This state points to itself because a kleene state can always reach itself
-				temp->transitions[nfa_cursor->next_opt->opt] = temp;
-				nfa_cursor->next->visited = 0;
-				nfa_cursor->next_opt->visited = 0;
-				
-				
-				/*
-				//Make a simple state for the left one
-				left_opt = create_DFA_state(nfa_cursor->next);
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
-				right_opt = right_opt->next;
 
-				temp = merge_alternate_states(left_opt, right_opt);
-				temp->transitions[nfa_cursor->next_opt->opt] = temp;
-				*/
+				/**
+				 * We'll now patch in the "left_opt" such that previous points to it. We'll
+				 * then patch in right opt as well. Finally, we'll make it so that right_opt
+				 * points back to its own beginning
+				 */
+				
+				//Patching in left_opt
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = left_opt;
+				}
+					
+				//Patching in right_opt
+				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
+					previous->transitions[opt] = right_opt;
+				}
 
-				break;
+
+				//We'll now need to navigate to the end of the right opt repeater
+				//sub-DFA
+				cursor = right_opt;
+
+				
+				while(cursor->next != NULL){
+					cursor = cursor->next;
+				}
+
+				//Now that we're here, cursor holds the very end of the right sub-DFA
+				//Everything that we have in the cursor must point back to the left DFA
+				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
+					cursor->transitions[opt] = left_opt;
+				}
+					
+				//Patching in right_opt
+				//Everything that we have in the cursor must also point back to the right DFA
+				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
+					//Grab the char
+					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
+					cursor->transitions[opt] = right_opt;
+				}
+			
+
+
+				//Get out
+				return dfa_start;
+
 			case SPLIT_POSITIVE_CLOSURE:
 				//TODO This one works but seems fishy to me, definitely needs more testing
 				//This state will also repeat

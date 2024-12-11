@@ -15,20 +15,12 @@
 * Define a testing function for us here. "test_case" is what case we want to test, and fall through
 * let's us know that we want to test everything after that case
 */
-void test_case_run(u_int8_t test_case, u_int8_t fall_through){
+void test_case_run(u_int8_t test_case){
 	regex_t tester;
 	char* test_string;
 
-	//If we're testing all cases then we will of course fall through
-	if(test_case == ALL){
-		fall_through = 1;
-	}
-
 	//Go through all of our test cases. Designed so that we can always add more
 	switch(test_case){
-		//Use fall through to run all of these
-		case ALL:
-			printf("Running ALL test cases:\n\n");
 		//Case 1 tests regular concatenation 
 		case 1:
 			printf("Testing plain concatenation with regex: \"abcd\":\n");
@@ -54,9 +46,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			destroy_regex(tester);
 
 			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 			
 		//Case 2 tests the 0 or 1 ? operator
 		case 2:
@@ -83,9 +73,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			destroy_regex(tester);
 
 			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 			
 		//Case 3 tests using the escape character ~
 		case 3:
@@ -102,10 +90,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Ensure that this works
 			destroy_regex(tester);
 
-			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 			
 		case 4:
 			printf("Testing concatenation with | operator:\n");
@@ -131,10 +116,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			destroy_regex(tester);
 
 
-			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 			
 		//Case 5 tests kleene star
 		case 5:
@@ -153,10 +135,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Destroy
 			destroy_regex(tester);
 	
-			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 		
 		//Case 6 tests positive closure
 		case 6:
@@ -175,9 +154,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			destroy_regex(tester);
 		
 			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 		
 			
 		//Case 7 tests positive closure
@@ -196,10 +173,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Destroy 
 			destroy_regex(tester);
 		
-			//Break out if we don't fall through
-			if(fall_through == 0){
-				break;
-			}
+			break;
 
 		case 8:
 			printf("Testing associativity\n");
@@ -214,9 +188,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			
 			destroy_regex(tester);
 				
-			if(fall_through == 0){
-				break;
-			}
+			break;
 
 		case 9:
 			printf("More associativity tests\n");
@@ -226,15 +198,35 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 
 			//We should match
 			test_string = "zyxwvutabcdlmnop";
-				regex_match(tester, test_string, 0, REGEX_VERBOSE);
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 			
 			destroy_regex(tester);
+			
+			break;
 				
+		case 10:
+			printf("Chaining tests\n");
+
+			/**
+			//Initialization
+			tester = define_regular_expression("a(bc)?dlmno(p)?d", REGEX_VERBOSE);
+
+			//Should have a match here
+			test_string = "asdklf;asdfadlmnopd";
+			
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+		
+			destroy_regex(tester);	
+			
 			if(fall_through == 0){
 				break;
-			}	
-
-		case 10:
+			}
+			
+			**/
+			break;
+		
+			
+		case 11:
 			printf("More alternation tests\n");
 
 		/**
@@ -243,6 +235,7 @@ void test_case_run(u_int8_t test_case, u_int8_t fall_through){
 			//Initialization
 //			tester = define_regular_expression("(abcd|acd)a", REGEX_VERBOSE);
 		
+		break;
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
@@ -254,11 +247,13 @@ int main(int argc, char** argv){
 	u_int32_t argument;
 
 	if(argc == 2 && (sscanf(argv[1], "%u", &argument) > 0)){
-		test_case_run(argument, 0);
+		test_case_run(argument);
 	}
 	
 	if(argc == 1){
-		test_case_run(ALL, 1);
+		for(u_int8_t i = 0; i < 12; i++){
+			test_case_run(i);
+		}
 	}
 
 }
