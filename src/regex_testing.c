@@ -17,7 +17,7 @@
 */
 void test_case_run(u_int8_t test_case){
 	char* test_string;
-	regex_t tester;
+	regex_t* tester;
 
 	//Go through all of our test cases. Designed so that we can always add more
 	switch(test_case){
@@ -53,7 +53,7 @@ void test_case_run(u_int8_t test_case){
 			printf("Testing concatenation with ? operator:\n");
 
 			//Define the regex
-			regex_t tester = define_regular_expression("abc?d", REGEX_VERBOSE);
+			tester = define_regular_expression("abc?d", REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "aaabbbbbbabcdlmnop";

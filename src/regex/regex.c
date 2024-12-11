@@ -1423,12 +1423,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
  * If anything goes wrong, a regex_t struct will be returned in a REGEX_ERR state. This regex
  * will then be useless by the match function
  */
-regex_t define_regular_expression(char* pattern, regex_mode_t mode){
+regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	//Stack allocate a regex
-	regex_t regex;
+	regex_t* regex = malloc(sizeof(regex_t));
 	//Set to NULL as a flag
-	regex.NFA = NULL;
-	regex.DFA = NULL;
+	regex->NFA = NULL;
+	regex->DFA = NULL;
 
 	//Just in case
 	if(pattern == NULL || strlen(pattern) == 0){
@@ -1438,7 +1438,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		}
 
 		//Set this flag so that the user knows
-		regex.state = REGEX_ERR;
+		regex->state = REGEX_ERR;
 		return regex;
 	}
 
@@ -1449,14 +1449,14 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 			printf("REGEX ERROR: Patterns of size 150 or more not supported\n");
 		}
 
-		regex.state = REGEX_ERR;
+		regex->state = REGEX_ERR;
 		return regex;
 	}
 
 	//Convert to postfix before applying our algorithm
 	char* postfix = in_to_post(pattern, mode);
 	//Save for reference
-	regex.regex = postfix;
+	regex->regex = postfix;
 
 	//If this didn't work, we will stop and return a bad regex
 	if(postfix == NULL){
@@ -1466,7 +1466,7 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 		}
 
 		//Put in error state
-		regex.state = REGEX_ERR;
+		regex->state = REGEX_ERR;
 		return regex;
 	}
 
@@ -1476,17 +1476,17 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	}
 
 	//Initially 0
-	regex.num_states = 0;
+	regex->num_states = 0;
 
 	//Create the NFA first
-	regex.NFA = create_NFA(postfix, mode, &(regex.num_states));
+	regex->NFA = create_NFA(postfix, mode, &(regex->num_states));
 
 	//If this is bad, we'll bail out here
-	if(regex.NFA == NULL){
+	if(regex->NFA == NULL){
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: NFA creation failed.\n");
 			//Put in an error state
-			regex.state = REGEX_ERR;
+			regex->state = REGEX_ERR;
 			
 			//Ensure there is no leakage
 			free(postfix);
@@ -1498,20 +1498,20 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Display if desired
 	if(mode == REGEX_VERBOSE){
 		printf("\nNFA conversion succeeded.\n");
-		print_NFA(regex.NFA);
+		print_NFA(regex->NFA);
 		printf("\n\nBeginning DFA Conversion.\n\n");
 	}
 
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex.DFA = create_DFA(regex.NFA, mode, 0);
+	regex->DFA = create_DFA(regex->NFA, mode, 0);
 
 	//If it didn't work
-	if(regex.DFA == NULL){
+	if(regex->DFA == NULL){
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: DFA creation failed.\n");
-			regex.state = REGEX_ERR;
+			regex->state = REGEX_ERR;
 			free(postfix);
 			return regex;
 		}
@@ -1520,12 +1520,12 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode){
 	//Display if desired
 	if(mode == REGEX_VERBOSE){
 		printf("DFA conversion succeeded.\n");
-		print_DFA(regex.DFA);
+		print_DFA(regex->DFA);
 		printf("\n");
 	}
 
 	//If it did work, we'll set everything to true
-	regex.state = REGEX_VALID;
+	regex->state = REGEX_VALID;
 
 	//If the user request verbose mode, we'll display
 	if(mode == REGEX_VERBOSE){
@@ -1657,7 +1657,7 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 /**
  * The public facing match method that the user will call when attempting to pattern match
  */
-regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode){
+regex_match_t regex_match(regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode){
 	//Stack allocated match struct
 	regex_match_t match_struct;
 
@@ -1665,7 +1665,7 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 	match_struct.status = MATCH_ERR;
 
 	//If we are given a bad regex 
-	if(regex.DFA == NULL || regex.state == REGEX_ERR){
+	if(regex->DFA == NULL || regex->state == REGEX_ERR){
 		//Verbose mode
 		if(mode == REGEX_VERBOSE){
 			printf("REGEX ERROR: Attempt to use an invalid regex.\n");
@@ -1697,7 +1697,7 @@ regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index,
 	}
 
 	//Attempt to match the string with the regex
-	match(&match_struct, &regex, string, starting_index, mode);
+	match(&match_struct, regex, string, starting_index, mode);
 
 
 	//Return the match struct
@@ -1760,15 +1760,18 @@ static void teardown_DFA(DFA_state_t* state){
 /**
  * Comprehensive cleanup function that cleans up everything related to the regex
  */
-void destroy_regex(regex_t regex){
+void destroy_regex(regex_t* regex){
 	//Teardown the NFA
-	teardown_NFA((NFA_state_t*)(regex.NFA));
+	teardown_NFA((NFA_state_t*)(regex->NFA));
 
 	//Clean up the DFA
-	teardown_DFA((DFA_state_t*)(regex.DFA));
+	teardown_DFA((DFA_state_t*)(regex->DFA));
 
 	//Free the postfix expression
-	free(regex.regex);
+	free(regex->regex);
+
+	//Free the regex itself
+	free(regex);
 }
 
 

@@ -97,7 +97,7 @@ typedef struct {
 /**
  * Define a regular expression using all regular expression rules
  */
-regex_t define_regular_expression(char* pattern, regex_mode_t mode);
+regex_t* define_regular_expression(char* pattern, regex_mode_t mode);
 
 
 /**
@@ -105,12 +105,12 @@ regex_t define_regular_expression(char* pattern, regex_mode_t mode);
  * the DFA in regex_t.
  * Returns 0 if no match, 1 if a match
  */
-regex_match_t regex_match(regex_t regex, char* string, u_int32_t starting_index, regex_mode_t mode);
+regex_match_t regex_match(regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode);
 
 
 /**
  * Deallocate all memory and destroy the regex passed in
  */
-void destroy_regex(regex_t regex);
+void destroy_regex(regex_t* regex);
 
 #endif
