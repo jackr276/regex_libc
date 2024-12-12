@@ -266,6 +266,8 @@ void test_case_run(u_int8_t test_case){
 
 			//Clean up
 			destroy_regex(tester);
+			
+			return;
 
 		case 14:
 			printf("Combining Zero or one and kleene");
@@ -280,6 +282,8 @@ void test_case_run(u_int8_t test_case){
 
 			//Clean up
 			destroy_regex(tester);
+
+			return;
 			
 		case 15:
 			printf("Combining Zero or one and kleene");
@@ -294,6 +298,8 @@ void test_case_run(u_int8_t test_case){
 
 			//Clean up
 			destroy_regex(tester);
+			
+			return;
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:

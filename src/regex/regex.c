@@ -1103,10 +1103,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		//We have different processing rules for each of our special cases. The default is of course that we just have a char
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
+				nfa_cursor->visited = 3;
 				//Create the DFA for the straight path, marking each state as "off limits" whenever we see it.
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
 				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				print_DFA(left_opt->next);
 
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
