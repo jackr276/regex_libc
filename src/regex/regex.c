@@ -101,6 +101,10 @@ struct DFA_state_t {
 /**
  * Convert a regular expression from infix to postfix notation. The character
  * '`' is used as the explicit concatentation operator
+ *
+ * TODO
+ * 	Idea for making this recursive to better handle the parenthesis. Right now parenthesis
+ * 	simply do not work with | because of the way concatenation is handled
  */
 static char* in_to_post(char* regex, regex_mode_t mode){
 	//Allocate space with calloc so we don't have to worry about null termination
@@ -202,7 +206,6 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 					buffer++;
 				}
 
-				//Add in all of the pipes in postfix order
 				for(; num_pipes > 0; num_pipes--){
 					*buffer = '|';
 					buffer++;
@@ -698,6 +701,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_2 = (NFA_fragement_t*)pop(stack);
 				frag_1 = (NFA_fragement_t*)pop(stack);
 
+				if(frag_2 == NULL || frag_1 == NULL) printf("NULL ENCOUNTERED");
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
 				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start, num_states);
@@ -1020,47 +1024,6 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 
 
 /**
- * EXPERIMENTAL
- *
- * This function will create one "super-state" that is two states merged together at once. This will be used
- * for our "SPLIT_" states, as we should really never have a state that represents a split T_1 in and off itself
- */
-static DFA_state_t* create_merged_states(NFA_state_t* nfa_state_a, NFA_state_t* nfa_state_b){
-	//Create these 2 states
-	DFA_state_t* state_1 = create_DFA_state(nfa_state_a);
-	DFA_state_t* state_2 = create_DFA_state(nfa_state_b);
-	//These 2 have already been visited
-	nfa_state_a->visited = 3;
-	nfa_state_b->visited = 3;
-
-	//Patch these in together
-	for(u_int16_t i = 0; i < state_2->nfa_state_list.length; i++){
-		//Add them into state 1
-		state_1->nfa_state_list.states[state_1->nfa_state_list.length] = state_2->nfa_state_list.states[i];
-		state_1->nfa_state_list.length += 1;
-	}
-
-	return state_1;
-}
-
-
-/**
- * Merge two previously created DFA states
- */
-//TODO Make this a sort of "copy constructor". It shouldn't be mutating the left_opt as it is currenlty
-static DFA_state_t* merge_alternate_states(DFA_state_t* left_opt, DFA_state_t* right_opt){
-	//Patch these in together
-	for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-		//Add them into state 1
-		left_opt->nfa_state_list.states[left_opt->nfa_state_list.length] = right_opt->nfa_state_list.states[i];
-		left_opt->nfa_state_list.length += 1;
-	}
-
-	return left_opt;
-}
-
-
-/**
  * Translate an NFA into an equivalent DFA using the reachability matrix
  * method. We will recursively figure out which states are reachable from other states. Our
  * new linked list of states should help us with this
@@ -1160,7 +1123,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					cursor->transitions[opt] = left_opt;
 				}
 
-				/**
+				//The way in which this is implemented makes "print_dfa" nearly useless
 				previous->next = left_opt_mem;
 				previous = left_opt_mem;
 				while(previous->next != NULL){
@@ -1172,13 +1135,14 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				while(previous->next != NULL){
 					previous = previous->next;
 				}
-				*/
+				
 
 				//In theory the entire thing should now be done so
 				return dfa_start;
 
 			//Handle an alternate split
 			case SPLIT_ALTERNATE:	
+				nfa_cursor->visited = 3;
 				//Create two separate sub-DFAs
 				left_opt = create_DFA(nfa_cursor->next, mode, 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);

@@ -4,11 +4,8 @@
  */
 
 #include "regex/regex.h"
-#include <linux/limits.h>
 #include <stdio.h>
 #include <sys/types.h>
-
-#define ALL 0 
 
 
 /**
@@ -233,7 +230,7 @@ void test_case_run(u_int8_t test_case){
 		 * TODO this still segfaults, some issue with NFA creation
 		*/
 			//Initialization
-			tester = define_regular_expression("ab|dabc*", REGEX_VERBOSE);
+			tester = define_regular_expression("(ab|da)bc", REGEX_VERBOSE);
 		
 		return;
 
