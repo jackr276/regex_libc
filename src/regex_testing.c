@@ -252,6 +252,48 @@ void test_case_run(u_int8_t test_case){
 			destroy_regex(tester);	
 			
 			return;
+
+		case 13:
+			printf("Chaining Zero or one operators\n");
+			
+			//Initialization
+			tester = define_regular_expression("ab?cdef(ge)?a", REGEX_VERBOSE);
+			
+			test_string = "asdfasfdacdefgeakjs";
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Clean up
+			destroy_regex(tester);
+
+		case 14:
+			printf("Combining Zero or one and kleene");
+			
+			//Initialization
+			tester = define_regular_expression("ab?cdef(ge)*a", REGEX_VERBOSE);
+			
+			test_string = "asdfasfdacdefgegeakjs";
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Clean up
+			destroy_regex(tester);
+			
+		case 15:
+			printf("Combining Zero or one and kleene");
+			
+			//Initialization
+			tester = define_regular_expression("ab*cdef(ge)?a", REGEX_VERBOSE);
+			
+			test_string = "as   --*dfasfdacdefgeakjs";
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//Clean up
+			destroy_regex(tester);
 				
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
