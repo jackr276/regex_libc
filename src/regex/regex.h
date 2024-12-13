@@ -8,7 +8,6 @@
 
 //The accepting constant
 #define ACCEPTING 131
-#define NFA_END 150
 //Split_one_or_more is specifically used for the question mark(?) operator
 #define SPLIT_ZERO_OR_ONE 127 
 //Split_alternate is specifically used for the alternation(|) operator
@@ -17,8 +16,9 @@
 #define SPLIT_KLEENE 129 
 //Split_Pos_clos is specifically used for the positive closure(+) operator
 #define SPLIT_POSITIVE_CLOSURE 130
-#define START 0
+//The maximum length of a regex is 150
 #define REGEX_LEN 150
+//This is the explicit concatenation character. It is used in place of actual concatenation
 #define CONCATENATION '`'
 
 #include <stdint.h>

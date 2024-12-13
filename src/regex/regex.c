@@ -1003,16 +1003,17 @@ static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state
  */
 static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 	//Allocate a DFA state
-	DFA_state_t* dfa_state = (DFA_state_t*)malloc(sizeof(DFA_state_t));
+	DFA_state_t* dfa_state = (DFA_state_t*)calloc(1, sizeof(DFA_state_t));
 
 	//Set to null as warning
 	dfa_state->next = NULL;
 
+	//Legacy - no longer needed with calloc
 	//0 out the entire array of DFA transitions as well
-	memset(dfa_state->transitions, 0, 130*sizeof(DFA_state_t*));
+//	memset(dfa_state->transitions, 0, 130*sizeof(DFA_state_t*));
 
 	//0 out the entire array of NFA states
-	memset(dfa_state->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
+//	memset(dfa_state->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
 
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
 	if(nfa_state != NULL){
@@ -1032,7 +1033,6 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int16_t flag_states){
 	//The starting state for our DFA
 	DFA_state_t* previous;
-	u_int16_t previous_opt;
 	DFA_state_t* temp;
 	DFA_state_t* left_opt;
 	DFA_state_t* left_opt_mem;
@@ -1047,7 +1047,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 	//Advance previous
 	previous = dfa_start;	
-	previous_opt = 0;
 
 	//Maintain a cursor to the current NFA state
 	NFA_state_t* nfa_cursor = nfa_start;
@@ -1349,57 +1348,32 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				*/
 				//Get out
 				return dfa_start;
+
 			default:
 				temp = create_DFA_state(nfa_cursor);
+				//Patch in all of our new states
+				for(u_int16_t i = 0; i < temp->nfa_state_list.length; i++){
+					//Grab the character
+					u_int16_t opt = temp->nfa_state_list.states[i]->opt;
+					//Patch in all of the new states
+					previous->transitions[opt] = temp;
+					printf("ADDED TRANSITION FOR: %d\n", opt);
+				}
+
+				//Advance the current DFA pointer
+				previous->next = temp;
+				previous = temp;
+
+				//If we are flagging states, there may be times when we don't want to
+				if(flag_states == 1){
+					//We've now visited this state
+					nfa_cursor->visited = 3;
+				}
+
+				//Advance the pointer
+				nfa_cursor = nfa_cursor->next;
 				break;
 		}
-	
-		//Patch in all of our new states
-		for(u_int16_t i = 0; i < temp->nfa_state_list.length; i++){
-			//Grab the character
-			u_int16_t opt = temp->nfa_state_list.states[i]->opt;
-			//Patch in all of the new states
-			previous->transitions[opt] = temp;
-			printf("ADDED TRANSITION FOR: %d\n", opt);
-		}
-
-		//If we did this here we will need to merge some states
-		//Each state carries with it a linked list of all other 
-		//states created after in the order of object creation
-	
-		/**
-		if(left_opt_mem != NULL && right_opt_mem != NULL){
-
-			previous->next = left_opt_mem;
-			previous = left_opt_mem;
-			while(previous->next != NULL){
-				previous = previous->next;
-			}
-
-			previous->next = right_opt_mem;
-			previous = right_opt_mem;
-			while(previous->next != NULL){
-				previous = previous->next;
-			}
-		}
-		*/
-	
-
-		//Advance the current DFA pointer
-		previous->next = temp;
-		previous = temp;
-
-		//Update this for later use
-		previous_opt = nfa_cursor->opt;
-
-		//If we are flagging states, there may be times when we don't want to
-		if(flag_states == 1){
-			//We've now visited this state
-			nfa_cursor->visited = 3;
-		}
-
-		//Advance the pointer
-		nfa_cursor = nfa_cursor->next;
 	}
 
 	//Return a pointer to the start state
@@ -1608,6 +1582,7 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 			current_state = start_state;
 		}
 
+		if(current_state == NULL) printf("I AM NULL");
 		if(current_state->nfa_state_list.contains_accepting_state == 1){
 			//We've found the match
 			match->status = MATCH_FOUND;
