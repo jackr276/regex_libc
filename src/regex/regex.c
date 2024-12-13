@@ -704,6 +704,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				if(frag_2 == NULL || frag_1 == NULL) printf("NULL ENCOUNTERED");
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
+				//This is leaking memory
 				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start, num_states);
 
 				//If this is the very first state then it is our origin for the linked list
@@ -1071,12 +1072,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
 				left_opt = create_DFA(nfa_cursor->next, mode, 1);
-				print_DFA(left_opt->next);
 
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
-				print_DFA(right_opt->next);
 				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
@@ -1123,19 +1122,19 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					cursor->transitions[opt] = left_opt;
 				}
 
-				//The way in which this is implemented makes "print_dfa" nearly useless
+				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
 				previous = left_opt_mem;
 				while(previous->next != NULL){
 					previous = previous->next;
 				}
 
+				//We need to chain all of these together for the eventual memory freeing
 				previous->next = right_opt_mem;
 				previous = right_opt_mem;
 				while(previous->next != NULL){
 					previous = previous->next;
 				}
-				
 
 				//In theory the entire thing should now be done so
 				return dfa_start;
@@ -1144,6 +1143,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_ALTERNATE:	
 				nfa_cursor->visited = 3;
 				//Create two separate sub-DFAs
+				//TODO this may be causing issues by not marking stuff. It only exists this way currently to 
+				//avoid the accepting state being overlooked
 				left_opt = create_DFA(nfa_cursor->next, mode, 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
@@ -1173,6 +1174,20 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					//Grab the char
 					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
 					previous->transitions[opt] = right_opt;
+				}
+
+				//We need to chain all of these together for the eventual memory freeing
+				previous->next = left_opt_mem;
+				previous = left_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
+
+				//We need to chain all of these together for the eventual memory freeing
+				previous->next = right_opt_mem;
+				previous = right_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
 				}
 
 				//Get out
@@ -1243,7 +1258,19 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					cursor->transitions[opt] = right_opt;
 				}
 			
+				//We need to chain all of these together for the eventual memory freeing
+				previous->next = left_opt_mem;
+				previous = left_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
 
+				//We need to chain all of these together for the eventual memory freeing
+				previous->next = right_opt_mem;
+				previous = right_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
 
 				//Get out
 				return dfa_start;
