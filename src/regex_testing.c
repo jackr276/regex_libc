@@ -122,7 +122,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("ab*c", REGEX_VERBOSE);
 
 			//Define the test string
-			test_string = "aaabbbbbbc";
+			test_string = "aaabbbbbbc a.kas";
 			printf("TEST STRING: %s\n", test_string);
 			
 			//Test matching
@@ -337,6 +337,27 @@ void test_case_run(u_int8_t test_case){
 
 			//Initialization
 			tester = define_regular_expression("(a|b)(c|d)", REGEX_VERBOSE);
+
+			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "acbcdbdefasfa";
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
+			return;
+
+		case 19:
+			printf("Testing nesting parenthesis\n");
+			printf("REGEX: (ab*a)|(gef)\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab*a)|(gef)", REGEX_VERBOSE);
 			destroy_regex(tester);
 
 			return;

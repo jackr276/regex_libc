@@ -160,6 +160,14 @@ char* in_to_post(char* regex, regex_mode_t mode){
 				break;
 			//Handle an open parenthesis
 			case '(':
+				//This is the one case that we will not concatenate
+				if(previous_char == '|'){
+					*concat_cursor = *cursor;
+					cursor++;
+					concat_cursor++;
+					break;
+				}
+
 				//We'll have to concatenate here
 				*concat_cursor = '`';
 				concat_cursor++;
@@ -1025,9 +1033,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	//Declare this for our use as well
 	fringe_states_t* fringe;
 
-	//Keep track of chars processed
-	u_int16_t num_processed = 0;
-
 	//Iterate until we hit the null terminator
 	for(char* cursor = postfix; *cursor != '\0'; cursor++){
 		//Grab the current char
@@ -1037,9 +1042,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 		switch(ch){
 			//Concatenation character
 			case '`':
-				//Found one more
-				num_processed++;
-				
 				//Pop the 2 most recent literals off of the stack
 				frag_2 = (NFA_fragement_t*)pop(stack);
 			    frag_1 = (NFA_fragement_t*)pop(stack);
@@ -1077,19 +1079,15 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
-				//This is leaking memory
 				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start, num_states);
 
 				//If this is the very first state then it is our origin for the linked list
-				if(num_processed == 0){
+				if(tail == NULL){
 					tail = split;
 				} else {
-					//Add onto linked list
 					tail->next_created = split;
 					tail = split;
 				}
-
-				num_processed++;
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
@@ -1112,16 +1110,13 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
 				split = create_state(SPLIT_KLEENE, NULL, frag_1->start, num_states);
 				
-				//If this is the very first state then it is our origin for the linked list
-				if(num_processed == 0){
+				//Store these in memory
+				if(tail == NULL){
 					tail = split;
 				} else {
-					//Add onto linked list
 					tail->next_created = split;
 					tail = split;
 				}
-
-				num_processed++;
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -1151,15 +1146,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_2->start, num_states);
 	
 				//If this is the very first state then it is our origin for the linked list
-				if(num_processed == 0){
+				if(tail == NULL){
 					tail = split;
 				} else {
-					//Add onto linked list
 					tail->next_created = split;
 					tail = split;
 				}
-
-				num_processed++;
 
 				//Print out the fringe states DEBUGGING STATEMENT
 				if(mode == REGEX_VERBOSE){
@@ -1192,7 +1184,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				split = create_state(SPLIT_ZERO_OR_ONE, NULL, frag_1->start, num_states);
 
 				//If this is the very first state then it is our origin for the linked list
-				if(num_processed == 0){
+				if(tail == NULL){
 					tail = split;
 				//We'll need to insert this into the linked list in the right position
 				} else {
@@ -1200,8 +1192,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 					tail->next_created = split;
 					tail = split;
 				}
-
-				num_processed++;
 
 				//Note how for this one, we won't concatenate states at all, but we'll instead concatentate
 				//the two fringe lists into one big one because the fringe is a combined fringe
@@ -1223,7 +1213,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new state with the escaped character
 				s = create_state(*cursor, NULL,  NULL,  num_states);
 
-				if(num_processed == 0){
+				if(tail == NULL){
 					tail = s;
 				} else {
 					tail->next_created = s;
@@ -1243,24 +1233,20 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Create a new state with the charcter, and no attached states
 				s = create_state(ch, NULL, NULL, num_states);
 
-				//concatenate to linkedlist
-				if(num_processed == 0){
-					printf("Making start state\n");
+				//Concatenate to linked list
+				if(tail == NULL){
 					tail = s;
 				} else {
 					tail->next_created = s;
 					tail = s;
 				}
 
-				//One more processed
-				num_processed++;
-
 				//Create a fragment, with the fringe states of that fragment being just this new state that we
 				//created
 				fragment = create_fragment(s,  init_list(s));
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
-				push(stack,  fragment);
+				push(stack, fragment);
 
 				//If we're in verbose mode, print out which character we processed
 				if(mode == REGEX_VERBOSE){
@@ -1301,6 +1287,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 	//Save this before we free final
 	NFA_state_t* starting_state = final->start;
+
 	//Free final
 	free(final);
 
@@ -1380,13 +1367,6 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 
 	//Set to null as warning
 	dfa_state->next = NULL;
-
-	//Legacy - no longer needed with calloc
-	//0 out the entire array of DFA transitions as well
-//	memset(dfa_state->transitions, 0, 130*sizeof(DFA_state_t*));
-
-	//0 out the entire array of NFA states
-//	memset(dfa_state->nfa_state_list.states, 0, 130*sizeof(NFA_state_t*));
 
 	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
 	if(nfa_state != NULL){
@@ -1604,12 +1584,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					previous->transitions[opt] = right_opt;
 				}
 
-
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
 				cursor = right_opt;
-
 				
+				//Skip over
 				while(cursor->next != NULL){
 					cursor = cursor->next;
 				}
@@ -2068,6 +2047,7 @@ static void teardown_NFA(NFA_state_t* state_ptr){
 
 	//Loop while we still have stuff to free
 	while(cursor != NULL) {
+		printf("FREEING: %d\n", cursor->opt);
 		//Save the value
 		temp = cursor;
 		//Advance the linked list
