@@ -75,12 +75,12 @@ void test_case_run(u_int8_t test_case){
 			
 		//Case 3 tests using the escape character ~
 		case 3:
-			printf("Testing the explicit escape character ~:\n");
+			printf("Testing the explicit escape character \\:\n");
 
 			test_string = "aaaaaaab(cd)a";
 			printf("TEST STRING: %s\n", test_string);
 			//Define the regex
-			tester = define_regular_expression("ab~(cd~)a", REGEX_VERBOSE);
+			tester = define_regular_expression("ab\\(cd\\)a", REGEX_VERBOSE);
 
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);

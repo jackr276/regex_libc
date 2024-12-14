@@ -97,6 +97,126 @@ struct DFA_state_t {
 	DFA_state_t* next;
 };
 
+/**
+ * An improved version of the postfix converter using an operator stack
+ */
+char* in_to_post2(char* regex, regex_mode_t mode){
+	//Sanity check
+	if(regex == NULL || strlen(regex) == 0){
+		if(mode == REGEX_VERBOSE){
+			printf("ERROR: Null regex passed in\n");
+		}
+		//Get out 
+		return NULL;
+	}
+
+	//Check that all characters passed in are printable characters. If they aren't
+	//simply exit
+	for(char* regex_cursor = regex; *regex_cursor != '\0'; regex_cursor++){
+		if(*regex_cursor < 33 || *regex_cursor > 126){
+			if(mode == REGEX_VERBOSE){
+				printf("ERROR: Non-printable character passed in\n");
+			}
+			return NULL;
+		}
+	}
+
+	//Now that we know that we are in the clear here, we can begin allocating some stuff
+	//Allocate plenty of space for ourselves here
+	char* regex_with_concatenation = calloc(strlen(regex) * 5, sizeof(char));
+	//This will eventually be used for our postfix display
+	char* postfix = calloc(strlen(regex)*5, sizeof(char));
+
+	/**
+	 * We will now go through and add in the explicit concatenation characters(`)
+	 * The rules for adding these are as follows:
+	 * 	1.) Is the next character a regular char or not?
+	 */
+
+	//Preserve the original pointer
+	char* cursor = regex;
+	char* concat_cursor = regex_with_concatenation;
+
+	//Keep track of the last thing that we saw
+	char previous_char = *cursor;
+	//Add onto the concat_cursor
+	*concat_cursor = *cursor;
+	//Advance up
+	cursor++;
+	concat_cursor++;
+
+	//Go through and add everything into the regex_with_concatenation string
+	while(*cursor != '\0'){
+		switch(*cursor){
+			//For all of these, we'll just attach it and move on
+			case '*':
+			case '+':
+			case '?':
+			case '|':
+			case ')':
+				//Add it in and move along
+				previous_char = *cursor;
+				*concat_cursor = *cursor;
+				cursor++;
+				concat_cursor++;
+
+				break;
+			//Handle an open parenthesis
+			case '(':
+				//We'll have to concatenate here
+				*concat_cursor = '`';
+				concat_cursor++;
+
+				//Add in the parenthesis
+				previous_char = *cursor;
+				*concat_cursor = *cursor;
+				cursor++;
+				concat_cursor++;
+
+				break;
+			//This is our escape character
+			case '\\':
+				//We can add in concatenation here
+				if(previous_char != '(' && previous_char != '|'){
+					*concat_cursor = '`';
+					concat_cursor++;
+				}
+
+				*concat_cursor = '\\';
+				//We can use this as the previous char
+				previous_char = '\\';
+				concat_cursor++;
+				cursor++;
+				//Add whatever we had in
+				*concat_cursor = *cursor;
+				concat_cursor++;
+				cursor++;
+
+				break;
+			//Now we can handle all of our letters
+			default:
+				//If the previous char was an open paren, we won't
+				//add a concatenation
+				if(previous_char != '(' && previous_char != '|'){
+					*concat_cursor = '`';
+					concat_cursor++;
+				}
+
+				*concat_cursor = *cursor;
+				concat_cursor++;
+				cursor++;
+				break;
+		}
+	}
+
+	if(mode == REGEX_VERBOSE){
+		printf("With concatenation characters added: %s\n", regex_with_concatenation);
+	}
+	
+	
+	return postfix;
+}
+
 
 /**
  * Convert a regular expression from infix to postfix notation. The character
@@ -111,6 +231,8 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 	char* postfix = calloc(REGEX_LEN * 2, sizeof(char));
 	//Use buffer as our cursor
 	char* buffer = postfix;
+	
+	in_to_post2(regex, mode);
 
 	//Create a stack for us to use
 	stack_t* stack = create_stack();
@@ -277,11 +399,11 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 				break;
 
 			//Explicit escape character
-			case '~':
+			case '\\':
 				//Fail case: if the cursor is at the end, we have an issue
 				if(*(cursor + 1) == '\0'){
 					if(mode == REGEX_VERBOSE){
-						printf("REGEX_ERROR: Use of escape character '~' with nothing following it.\n");
+						printf("REGEX_ERROR: Use of escape character '\\' with nothing following it.\n");
 					}
 					//Return NULL since this would be a fail case
 					free(buffer);
@@ -302,7 +424,7 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 				cursor++;
 
 				//Add this into the buffer
-				*buffer = '~';
+				*buffer = '\\';
 				//Push up the buffer pointer
 				buffer++;
 
@@ -353,6 +475,7 @@ static char* in_to_post(char* regex, regex_mode_t mode){
 	//Return the buffer
 	return postfix;
 }
+
 
 
 /* ================================================== NFA Methods ================================================ */
@@ -843,7 +966,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				break;
 
 			//If we see the escape character, then we process the immediately next character as a regular char
-			case '~':
+			case '\\':
 				cursor++;
 
 				//Create a new state with the escaped character
