@@ -124,9 +124,6 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 	//Now that we know that we are in the clear here, we can begin allocating some stuff
 	//Allocate plenty of space for ourselves here
 	char* regex_with_concatenation = calloc(strlen(regex) * 5, sizeof(char));
-	//This will eventually be used for our postfix display
-	char* postfix = calloc(strlen(regex)*5, sizeof(char));
-
 	/**
 	 * We will now go through and add in the explicit concatenation characters(`)
 	 * The rules for adding these are as follows:
@@ -202,6 +199,10 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 					concat_cursor++;
 				}
 
+				//Save the previous char
+				previous_char = *cursor;
+
+				//Add back in
 				*concat_cursor = *cursor;
 				concat_cursor++;
 				cursor++;
@@ -209,11 +210,43 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 		}
 	}
 
+	//Display if we're in verbose mode
 	if(mode == REGEX_VERBOSE){
 		printf("With concatenation characters added: %s\n", regex_with_concatenation);
 	}
 	
+	/**
+	 * Now that we've added in explicit concatenation, we can go through and use
+	 * the Shunting-Yard algorithm to create the postfix expression
+	 */
+
+	//This will eventually be used for our postfix display
+	char* postfix = calloc(strlen(regex)*5, sizeof(char));
+	//Restart the concat cursor
+	concat_cursor = regex_with_concatenation;
+	//This ensures we don't lose the start
+	char* postfix_cursor = postfix;
+
+	//An operator stack that will hold any operators that we see
+	stack_t* operator_stack = create_stack();
+
+	//Go through the regex with concatenation string
+	while(*concat_cursor != '\0'){
+		//Switch based on what character we see
+		switch(*concat_cursor){
+
+			default:
+				*postfix_cursor = *concat_cursor;
+				concat_cursor++;
+
+
+		}
 	
+	}
+	
+	//We don't need this anymore
+	free(regex_with_concatenation);
+
 	return postfix;
 }
 
