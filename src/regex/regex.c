@@ -100,7 +100,7 @@ struct DFA_state_t {
 /**
  * An improved version of the postfix converter using an operator stack
  */
-char* in_to_post2(char* regex, regex_mode_t mode){
+char* in_to_post(char* regex, regex_mode_t mode){
 	//Sanity check
 	if(regex == NULL || strlen(regex) == 0){
 		if(mode == REGEX_VERBOSE){
@@ -227,7 +227,6 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 	//This ensures we don't lose the start
 	char* postfix_cursor = postfix;
 	char stack_cursor;
-	void* stack_top;
 	u_int8_t found_open;
 
 	//An operator stack that will hold any operators that we see
@@ -434,9 +433,7 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 				postfix_cursor++;
 				break;
 		}
-	
 	}
-
 
 	//Once we reach the end, we'll need to pop everything else that we have on the stack off and append it
 	//As long as we haven't hit the bottom
@@ -459,7 +456,8 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 		postfix_cursor++;
 	}
 
-
+	//Destroy the whole stack
+	destroy_stack(operator_stack, STATES_ONLY);
 	
 	//We don't need this anymore
 	free(regex_with_concatenation);
@@ -481,14 +479,12 @@ char* in_to_post2(char* regex, regex_mode_t mode){
  * 	Idea for making this recursive to better handle the parenthesis. Right now parenthesis
  * 	simply do not work with | because of the way concatenation is handled
  */
-static char* in_to_post(char* regex, regex_mode_t mode){
+static char* in_to_post2(char* regex, regex_mode_t mode){
 	//Allocate space with calloc so we don't have to worry about null termination
 	char* postfix = calloc(REGEX_LEN * 2, sizeof(char));
 	//Use buffer as our cursor
 	char* buffer = postfix;
 	
-	in_to_post2(regex, mode);
-
 	//Create a stack for us to use
 	stack_t* stack = create_stack();
 

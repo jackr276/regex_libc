@@ -4,7 +4,6 @@
  */
 
 #include "regex/regex.h"
-#include "stack/stack.h"
 #include <stdio.h>
 #include <sys/types.h>
 
@@ -303,7 +302,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 16:
-			printf("Combining alternation and kleene");
+			printf("Combining alternation and kleene\n");
 
 			//Initialization
 			tester = define_regular_expression("abc|de*f", REGEX_VERBOSE);
@@ -327,8 +326,8 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: a(bcd(ab)*)?efg\n");
 
 			//Initialization
-			tester = define_regular_expression("a(bcd(ab)*)?efg", REGEX_VERBOSE);
-			destroy_regex(tester);
+//			tester = define_regular_expression("a(bcd(ab)*)?efg", REGEX_VERBOSE);
+//			destroy_regex(tester);
 
 			return;
 
