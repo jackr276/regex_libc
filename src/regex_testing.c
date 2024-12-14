@@ -4,6 +4,7 @@
  */
 
 #include "regex/regex.h"
+#include "stack/stack.h"
 #include <stdio.h>
 #include <sys/types.h>
 
@@ -230,8 +231,9 @@ void test_case_run(u_int8_t test_case){
 		 * TODO this still segfaults, some issue with NFA creation
 		*/
 			//Initialization
+			printf("Regex: (ab|da)bc\n");
 			//Does nothing for now due to brokenness
-			//tester = define_regular_expression("(ab|da)bc", REGEX_VERBOSE);
+			tester = define_regular_expression("(ab|da)bc", REGEX_VERBOSE);
 			return;
 		
 		return;
@@ -299,7 +301,38 @@ void test_case_run(u_int8_t test_case){
 			destroy_regex(tester);
 			
 			return;
+
+		case 16:
+			printf("Combining alternation and kleene");
+
+			//Initialization
+			tester = define_regular_expression("abc|de*f", REGEX_VERBOSE);
+
+			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "acbcdbdefasfa";
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
+			return;
 				
+		case 17:
+			printf("Testing nesting parenthesis\n");
+			printf("REGEX: a(bcd(ab)*)?efg\n");
+
+			//Initialization
+			tester = define_regular_expression("a(bcd(ab)*)?efg", REGEX_VERBOSE);
+			destroy_regex(tester);
+
+			return;
+			
+		
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;

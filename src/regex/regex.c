@@ -701,7 +701,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_2 = (NFA_fragement_t*)pop(stack);
 				frag_1 = (NFA_fragement_t*)pop(stack);
 
-				if(frag_2 == NULL || frag_1 == NULL) printf("NULL ENCOUNTERED");
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
 				//This is leaking memory
