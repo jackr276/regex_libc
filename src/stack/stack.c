@@ -64,6 +64,11 @@ void* pop(stack_t* stack){
 		return NULL;
 	}
 
+	//If there are no nodes return 0
+	if(stack->num_nodes == 0){
+		return NULL;
+	}
+
 	//Grab the data
 	void* ptr = stack->top->data;
 	
@@ -93,6 +98,11 @@ void* peek(stack_t* stack){
 
 	//If the top is NULL, just return NULL
 	if(stack->top == NULL){
+		return NULL;
+	}
+
+	//If there are no nodes return 0
+	if(stack->num_nodes == 0){
 		return NULL;
 	}
 

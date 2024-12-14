@@ -226,26 +226,248 @@ char* in_to_post2(char* regex, regex_mode_t mode){
 	concat_cursor = regex_with_concatenation;
 	//This ensures we don't lose the start
 	char* postfix_cursor = postfix;
+	char stack_cursor;
+	void* stack_top;
+	u_int8_t found_open;
 
 	//An operator stack that will hold any operators that we see
 	stack_t* operator_stack = create_stack();
 
+	/**
+	 * Shunting Yard Algorithm:
+	 * 	Go through the infix expression char by char
+	 * 	If we see an operator, compare that operator with the operator stack
+	 * 		If the operator on the top of the stack has a higher precedence, pop it off
+	 * 		and append to the string. If not, push the new operator onto the stack.
+	 *
+	 *  At the very end, we pop all operators off of the stack and place them at the end of the 
+	 *  string
+	 */
 	//Go through the regex with concatenation string
 	while(*concat_cursor != '\0'){
 		//Switch based on what character we see
 		switch(*concat_cursor){
+			//If we see the escape character, it and whatever
+			//come after are treated just like regular characters
+			case '\\':
+				//Add the explicit escape char in
+				*postfix_cursor = *concat_cursor;
+				postfix_cursor++;
+				concat_cursor++;
+				//Add whatever was escaped in too
+				*postfix_cursor = * concat_cursor;
+				postfix_cursor++;
+				concat_cursor++;
 
+				break;
+
+			//Handle kleene start operator
+			case '*':
+				//As long as we haven't hit the bottom
+				while(peek(operator_stack) != NULL){
+					//Pop off of the stack
+					stack_cursor = *((char*)peek(operator_stack));
+					//If it's of equal or higher precedence(?, * or +) we'll pop it off
+					if(stack_cursor == '*' || stack_cursor == '+' || stack_cursor == '?'){
+						//Pop it and add it on to the postfix
+						*postfix_cursor = *((char*)pop(operator_stack));
+						postfix_cursor++;
+					//Otherwise it's of lower precedence so we'll leave
+					} else {
+						break;
+					}
+				}
+
+				//This will always get pushed on
+				push(operator_stack, "*");
+				
+				//Advance the cursor
+				concat_cursor++;
+				break;
+
+			//Handle positive closure operator
+			case '+':
+				//As long as we haven't hit the bottom
+				while(peek(operator_stack) != NULL){
+					//Pop off of the stack
+					stack_cursor = *((char*)peek(operator_stack));
+					//If it's of equal or higher precedence(?, * or +) we'll pop it off
+					if(stack_cursor == '*' || stack_cursor == '+' || stack_cursor == '?'){
+						//Pop it and add it on to the postfix
+						*postfix_cursor = *((char*)pop(operator_stack));
+						postfix_cursor++;
+					//Otherwise it's of lower precedence so we'll leave
+					} else {
+						break;
+					}
+				}
+
+				//This will always get pushed on
+				push(operator_stack, "+");
+				//Advance the cursor
+				concat_cursor++;
+				
+				break;
+
+			//Handle 0 or 1 operator
+			case '?':
+				//As long as we haven't hit the bottom
+				while(peek(operator_stack) != NULL){
+					//Pop off of the stack
+					stack_cursor = *((char*)peek(operator_stack));
+					//If it's of equal or higher precedence(?, * or +) we'll pop it off
+					if(stack_cursor == '*' || stack_cursor == '+' || stack_cursor == '?'){
+						//Pop it and add it on to the postfix
+						*postfix_cursor = *((char*)pop(operator_stack));
+						postfix_cursor++;
+					//Otherwise it's of lower precedence so we'll leave
+					} else {
+						break;
+					}
+				}
+
+				//This will always get pushed on
+				push(operator_stack, "?");
+				
+				//Advance the cursor
+				concat_cursor++;
+				break;
+
+			case '`':
+				//As long as we haven't hit the bottom
+				while(peek(operator_stack) != NULL){
+					//Pop off of the stack
+					stack_cursor = *((char*)peek(operator_stack));
+					//If it's of equal or higher precedence(?, * or +) we'll pop it off
+					if(stack_cursor == '*' || stack_cursor == '+' || stack_cursor == '?'
+					   || stack_cursor == '`'){
+						//Pop it and add it on to the postfix
+						*postfix_cursor = *((char*)pop(operator_stack));
+						postfix_cursor++;
+					//Otherwise it's of lower precedence so we'll leave
+					} else {
+						break;
+					}
+				}
+
+				//This will always get pushed on
+				push(operator_stack, "`");
+				//Advance the cursor
+				concat_cursor++;
+				
+				break;
+			
+			//Handle the union(|) symbol	
+			case '|':
+				//As long as we haven't hit the bottom
+				while(peek(operator_stack) != NULL){
+					//Pop off of the stack
+					stack_cursor = *((char*)peek(operator_stack));
+					//If it's of equal or higher precedence(?, * or + or '`' or `|`) we'll pop it off
+					if(stack_cursor == '*' || stack_cursor == '+' || stack_cursor == '?'
+					   || stack_cursor == '`' || stack_cursor == '|'){
+						//Pop it and add it on to the postfix
+						*postfix_cursor = *((char*)pop(operator_stack));
+						postfix_cursor++;
+					//Otherwise it's of lower precedence so we'll leave
+					} else {
+						break;
+					}
+				}
+
+				//This will always get pushed on
+				push(operator_stack, "|");
+				//Advance the cursor
+				concat_cursor++;
+
+				break;
+			
+			//Handle left parenthesis
+			case '(':
+				//If we see this, we simply push it onto the stack and keep moving
+				push(operator_stack, "(");
+				//Move on to next character
+				concat_cursor++;
+
+				break;
+
+			//Handle the closing parenthesis
+			case ')':
+				//Once we see these, we'll need to keep popping off of the stack
+				//until we either run out or we hit a closing parenthesis
+				found_open = 0;
+
+				//As long as we haven't hit the bottom
+				while(peek(operator_stack) != NULL){
+					//Pop off of the stack
+					stack_cursor = *((char*)pop(operator_stack));
+
+					//If it's an end paren then we're done
+					if(stack_cursor == '('){
+						found_open = 1;
+						break;
+					} else {
+						//Otherwise, append the operator that we have to the postfix string
+						*postfix_cursor = stack_cursor;
+						postfix_cursor++;
+					}
+				}
+
+				//If this happens, we had an unmatched closing parenthesis. We'll cleanup and get out
+				if(found_open == 0){
+					printf("ERROR: Unmatched closing parenthesis");
+					//Free this because we know it's bad
+					free(postfix);
+					//Cleanup
+					destroy_stack(operator_stack, STATES_ONLY);
+					return NULL;
+				}
+				
+				//Advance the cursor
+				concat_cursor++;
+				break;
+
+			//If we're here, we have a regular character so we just append it
 			default:
 				*postfix_cursor = *concat_cursor;
 				concat_cursor++;
-
-
+				postfix_cursor++;
+				break;
 		}
 	
 	}
+
+
+	//Once we reach the end, we'll need to pop everything else that we have on the stack off and append it
+	//As long as we haven't hit the bottom
+	while(peek(operator_stack) != NULL){
+		//Pop off of the stack
+		stack_cursor = *((char*)pop(operator_stack));
+
+		//If we get this, it means that we have an unmatched parenthesis
+		if(stack_cursor == '('){
+			printf("ERROR: Unmatched opening parenthesis");
+			//Free this because we know it's bad
+			free(postfix);
+			//Cleanup
+			destroy_stack(operator_stack, STATES_ONLY);
+			return NULL;
+		}
+
+		//Otherwise, append the operator that we have to the postfix string
+		*postfix_cursor = stack_cursor;
+		postfix_cursor++;
+	}
+
+
 	
 	//We don't need this anymore
 	free(regex_with_concatenation);
+
+	//Display if the user wants
+	if(mode == REGEX_VERBOSE){
+		printf("Postfix regular expression: %s\n", postfix);
+	}
 
 	return postfix;
 }

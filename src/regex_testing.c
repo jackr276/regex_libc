@@ -331,6 +331,16 @@ void test_case_run(u_int8_t test_case){
 			destroy_regex(tester);
 
 			return;
+
+		case 18:
+			printf("Testing nesting parenthesis\n");
+			printf("REGEX: (a|b)(c|d)\n");
+
+			//Initialization
+			tester = define_regular_expression("(a|b)(c|d)", REGEX_VERBOSE);
+			destroy_regex(tester);
+
+			return;
 			
 		
 		//Added to avoid comptime errors, we shouldn't reach this
@@ -347,7 +357,7 @@ int main(int argc, char** argv){
 	}
 	
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 16; i++){
+		for(u_int8_t i = 0; i < 18; i++){
 			test_case_run(i);
 		}
 	}
