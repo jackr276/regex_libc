@@ -1,7 +1,7 @@
 /**
  * Author: Jack Robbins
  * This file contains the implementation for the regex library API defined in 
- * regex.h . Specifically, this file with procedurally generate a state machine that recognizes
+ * regex.h . Specifically, this file will generate a state machine that recognizes
  * strings belonging to a regular expression
  */
 
@@ -161,7 +161,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 			//Handle an open parenthesis
 			case '(':
 				//This is the one case that we will not concatenate
-				if(previous_char == '|'){
+				if(previous_char == '|' || previous_char == '('){
 					*concat_cursor = *cursor;
 					cursor++;
 					concat_cursor++;
@@ -871,8 +871,6 @@ static void destroy_fringe_list(fringe_states_t* list){
 static void print_fringe_states(fringe_states_t* list){
 	fringe_states_t* cursor = list;
 
-	printf("All states currently in fringe: ");
-
 	while(cursor != NULL){
 		printf("%c", cursor->state->opt);
 		cursor = cursor->next;
@@ -1050,11 +1048,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 				//However, we do still need the states in frag_2->fringe_states, so we'll leave those be	
 
-				//If we're in verbose mode, alert that a fragment was made
-				if(mode == REGEX_VERBOSE){
-					printf("\nFragment created concatenating characters %c and %c\n", frag_2->start->opt, frag_1->start->opt);
-				}	
-
 				//We're done with these now, so we should free them
 				free(frag_1);
 				free(frag_2);
@@ -1108,11 +1101,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 					tail = split;
 				}
 
-				//Print out the fringe states DEBUGGING STATEMENT
-				if(mode == REGEX_VERBOSE){
-					print_fringe_states(frag_1->fringe_states);
-				}
-
 				//Make all of the states in fragment_1 point to the beginning of the split 
 				//using their next_opt to allow for our "0 or more" functionality 
 				concatenate_states(frag_1->fringe_states, split, 1);
@@ -1144,11 +1132,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				} else {
 					tail->next_created = split;
 					tail = split;
-				}
-
-				//Print out the fringe states DEBUGGING STATEMENT
-				if(mode == REGEX_VERBOSE){
-					print_fringe_states(frag_1->fringe_states);
 				}
 
 				//Set all of the fringe states in frag_1 to point at the split
@@ -1245,10 +1228,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack, fragment);
 
-				//If we're in verbose mode, print out which character we processed
-				if(mode == REGEX_VERBOSE){
-					printf("\nAdded fragment for character: %c\n", ch);
-				}
 				break;
 		}
 	}
@@ -1492,8 +1471,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_ALTERNATE:	
 				nfa_cursor->visited = 3;
 				//Create two separate sub-DFAs
-				//TODO this may be causing issues by not marking stuff. It only exists this way currently to 
-				//avoid the accepting state being overlooked
 				left_opt = create_DFA(nfa_cursor->next, mode, 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
@@ -1712,7 +1689,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					u_int16_t opt = temp->nfa_state_list.states[i]->opt;
 					//Patch in all of the new states
 					previous->transitions[opt] = temp;
-					printf("ADDED TRANSITION FOR: %d\n", opt);
 				}
 
 				//Advance the current DFA pointer
@@ -1840,8 +1816,8 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	//Display if desired
 	if(mode == REGEX_VERBOSE){
 		printf("DFA conversion succeeded.\n");
-		print_DFA(regex->DFA);
-		printf("\n");
+//		print_DFA(regex->DFA);
+//		printf("\n");
 	}
 
 	//If it did work, we'll set everything to true

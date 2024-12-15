@@ -336,7 +336,7 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: (a|b)(c|d)\n");
 
 			//Initialization
-			tester = define_regular_expression("(a|b)(c|d)", REGEX_VERBOSE);
+			tester = define_regular_expression("((a|b)(c|d))a", REGEX_VERBOSE);
 
 			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
 	
@@ -357,12 +357,125 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: (ab*a)|(gef)\n");
 
 			//Initialization
-			tester = define_regular_expression("(ab*a)|(gef)", REGEX_VERBOSE);
+//			tester = define_regular_expression("(ab*a)|(gef)", REGEX_VERBOSE);
+//			destroy_regex(tester);
+
+			return;
+
+		case 20:
+			printf("Testing concatenation with parenthesis\n");
+			printf("REGEX: (a|c)b\n");
+
+			//Initialization
+			tester = define_regular_expression("(a|c)b", REGEX_VERBOSE);
+
+			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "aacbbbbbbbbbbbbbbcasdfasd";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+
 			destroy_regex(tester);
 
 			return;
 			
-		
+		case 21:
+			printf("Testing parenthesization");
+			printf("REGEX: (ab(cd)bcd)(aflf)\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab(cd)bcd)(aflf)", REGEX_VERBOSE);
+
+			test_string = "aaaaavabcdbcdaflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
+			return;
+
+		case 22:
+			printf("Testing parenthesization with kleene");
+			printf("REGEX: (ab(cd)*bcd)(aflf)\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab(cd)*bcd)(aflf)", REGEX_VERBOSE);
+
+			test_string = "aaaaavabcdcdcdcdcdcdcdbcdaflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
+			return;
+
+		case 23:
+			printf("Testing parenthesization with kleene");
+			printf("REGEX: (ab(cd)bcd)*(flf)\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab(cd)bcd)*(flf)", REGEX_VERBOSE);
+
+			test_string = "aaaaavabcdbcdabcdbcdflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
+			return;
+	
+		//Not working
+		case 24:
+			printf("Testing parenthesization with kleene");
+			printf("REGEX: (ab(cd)*bcd)+(flf)\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab(cd)*bcd)+(flf)", REGEX_VERBOSE);
+
+			test_string = "aaaaavabcdbcdabcdbcdflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "aaaaavabbcdabcdbcdflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+
+			destroy_regex(tester);
+
+			return;
+
+		case 25:
+			printf("Testing parenthesization with kleene");
+			printf("REGEX: (ab(cd)bcd)+(flf)*\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab(cd)bcd)+(flf)+", REGEX_VERBOSE);
+
+			test_string = "aaaaavabcdbcdabcdbcdflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "aaaaavabbcdabcdbcdflfas";
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+
+			destroy_regex(tester);
+
+			return;
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;
@@ -377,7 +490,7 @@ int main(int argc, char** argv){
 	}
 	
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 20; i++){
+		for(u_int8_t i = 0; i < 26; i++){
 			test_case_run(i);
 		}
 	}
