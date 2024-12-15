@@ -1689,15 +1689,21 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
 					cursor->transitions[opt] = right_opt;
 				}
-			
 
-				/**	
-				temp = previous;
-				//Set this state to point back to itself
-				previous->transitions[previous_opt] = previous;
-				//Should already be reachable
-				nfa_cursor->next->visited = 3;
-				*/
+				//We need to chain all of these together for the eventual memory freeing
+				previous->next = left_opt_mem;
+				previous = left_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
+
+				//We need to chain all of these together for the eventual memory freeing
+				previous->next = right_opt_mem;
+				previous = right_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
+
 				//Get out
 				return dfa_start;
 
@@ -2047,7 +2053,6 @@ static void teardown_NFA(NFA_state_t* state_ptr){
 
 	//Loop while we still have stuff to free
 	while(cursor != NULL) {
-		printf("FREEING: %d\n", cursor->opt);
 		//Save the value
 		temp = cursor;
 		//Advance the linked list
