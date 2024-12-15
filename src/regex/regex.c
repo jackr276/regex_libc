@@ -1117,6 +1117,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				//using their next_opt to allow for our "0 or more" functionality 
 				concatenate_states(frag_1->fringe_states, split, 1);
 
+				//After concatenation, these are useless to us
+				destroy_fringe_list(frag_1->fringe_states);
+
 				//Create a new fragment that originates at the new state, allowing for our "0 or many" function here
 				push(stack, create_fragment(split, init_list(split)));
 
@@ -1150,6 +1153,9 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 				//Set all of the fringe states in frag_1 to point at the split
 				concatenate_states(frag_1->fringe_states, split, 1);
+				
+				//After concatenation, these are useless to us
+				destroy_fringe_list(frag_1->fringe_states);
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
@@ -1203,6 +1209,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				//Create a new state with the escaped character
 				s = create_state(*cursor, NULL,  NULL);
 
+				//Add to linked list
 				if(tail == NULL){
 					tail = s;
 				} else {
