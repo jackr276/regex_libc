@@ -743,7 +743,7 @@ static char* in_to_post2(char* regex, regex_mode_t mode){
 /**
  * Create and return a state
  */
-static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt, u_int16_t* num_states){
+static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt){
 	//Allocate a state
  	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
 
@@ -754,9 +754,6 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
 	state->next_opt = next_opt;
 	//Must be set later on
 	state->next_created = NULL;
-
-	//Increment the counter
-	(*num_states)++;
 
 	//Give the pointer back
 	return state;
@@ -991,24 +988,17 @@ static NFA_state_t* copy_state(NFA_state_t* state){
  * Create a deep copy of a fragment that is totally independent from
  * the predecessor in memory
  */
-static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag){
+static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag, NFA_state_t** tail){
 	//Create the fragment copy
 	NFA_fragement_t* copy = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
-
+	NFA_state_t* copied_state = copy_state(frag->start);
+	
+	//Attach this to the linked list
+	(*tail)->next_created = copied_state;
+	(*tail) = copied_state;
+	
 	//Copy the start state
-	copy->start = copy_state(frag->start);
-
-	//Grab a cursor to iterate through
-	fringe_states_t* cursor = frag->fringe_states;
-	fringe_states_t* current_fringe_state = copy->fringe_states;
-
-	while(cursor != NULL){
-		current_fringe_state = malloc(sizeof(fringe_states_t));
-		current_fringe_state->state = cursor->state;
-		current_fringe_state->next = cursor->next;
-
-		cursor = cursor->next;
-	}
+	copy->start = copied_state;
 
 	return copy;
 }
@@ -1016,7 +1006,7 @@ static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag){
 /**
  * Create an NFA from a postfix regular expression FIXME does not work for () combined with *, | or +
  */
-static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_states){
+static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 	//Create a stack for pushing/popping
 	stack_t* stack = create_stack();
 	//A linked list for us to hold all of our created states
@@ -1079,7 +1069,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 
 				//Create a new special "split" state that acts as a fork in the road between the two
 				//fragment start states
-				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start, num_states);
+				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start);
 
 				//If this is the very first state then it is our origin for the linked list
 				if(tail == NULL){
@@ -1108,7 +1098,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				frag_1 = pop(stack);
 
 				//Create a new state. This new state will act as our split. This state will point to the start of the fragment we just got
-				split = create_state(SPLIT_KLEENE, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_KLEENE, NULL, frag_1->start);
 				
 				//Store these in memory
 				if(tail == NULL){
@@ -1139,11 +1129,11 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 			case '+':
 				//Grab the most recent fragment
 				frag_1 = pop(stack);
-				frag_2 = copy_fragment(frag_1);
+				frag_2 = copy_fragment(frag_1, &tail);
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
-				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_2->start, num_states);
+				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_2->start);
 	
 				//If this is the very first state then it is our origin for the linked list
 				if(tail == NULL){
@@ -1165,11 +1155,11 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
 				//THIS is the problem here, we can't have this guy point to fragment->start. It has to point to the immediately preceeding
 				//state
-				//push(stack, create_fragment(frag_1->start, concatenate_lists(frag_1->fringe_states, init_list(split))));
 				push(stack, create_fragment(frag_1->start, init_list(split)));
 
 				//Free this pointer
 				free(frag_1);
+				free(frag_2);
 
 				break;
 
@@ -1181,7 +1171,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				//We'll create a new state that acts as a split, but this time we won't add any arrows back to this
 				//state. This allows for a "zero or one" function
 				//NOTE: Here, we'll use Split's next-opt to point back to the fragment at the start
-				split = create_state(SPLIT_ZERO_OR_ONE, NULL, frag_1->start, num_states);
+				split = create_state(SPLIT_ZERO_OR_ONE, NULL, frag_1->start);
 
 				//If this is the very first state then it is our origin for the linked list
 				if(tail == NULL){
@@ -1211,7 +1201,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 				cursor++;
 
 				//Create a new state with the escaped character
-				s = create_state(*cursor, NULL,  NULL,  num_states);
+				s = create_state(*cursor, NULL,  NULL);
 
 				if(tail == NULL){
 					tail = s;
@@ -1231,7 +1221,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 			//Any character that is not one of the special characters
 			default:
 				//Create a new state with the charcter, and no attached states
-				s = create_state(ch, NULL, NULL, num_states);
+				s = create_state(ch, NULL, NULL);
 
 				//Concatenate to linked list
 				if(tail == NULL){
@@ -1274,7 +1264,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode, u_int16_t* num_
 	}
 
 	//Create the accepting state
-	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL, num_states);
+	NFA_state_t* accepting_state = create_state(ACCEPTING, NULL, NULL);
 	//Add into the linked list
 	tail->next_created = accepting_state;
 
@@ -1801,11 +1791,8 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 		printf("Postfix conversion: %s\n", postfix);
 	}
 
-	//Initially 0
-	regex->num_states = 0;
-
 	//Create the NFA first
-	regex->NFA = create_NFA(postfix, mode, &(regex->num_states));
+	regex->NFA = create_NFA(postfix, mode);
 
 	//If this is bad, we'll bail out here
 	if(regex->NFA == NULL){

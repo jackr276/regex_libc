@@ -74,9 +74,6 @@ typedef struct {
 	void* DFA;
 	//The state that the regex is in
 	regex_state_t state;
-	//The nuber of states in the regex
-	u_int16_t num_states;
-
 } regex_t;
 
 

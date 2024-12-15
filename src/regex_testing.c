@@ -245,7 +245,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("a(bc)+dlmnop+d", REGEX_VERBOSE);
 
 			//Should have a match here
-			test_string = "asdklf;asdfabcdlmnopd";
+			test_string = "asdklf;asdfabcbcdlmnoppppppdassd";
 			
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 		
@@ -377,7 +377,7 @@ int main(int argc, char** argv){
 	}
 	
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 18; i++){
+		for(u_int8_t i = 0; i < 20; i++){
 			test_case_run(i);
 		}
 	}
