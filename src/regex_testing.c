@@ -407,8 +407,22 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: (ab*a)|(gef)\n");
 
 			//Initialization
-//			tester = define_regular_expression("(ab*a)|(gef)", REGEX_VERBOSE);
-//			destroy_regex(tester);
+			tester = define_regular_expression("(ab*a)|(gef)", REGEX_VERBOSE);
+
+			test_string = "adddabbbbbbbbbbbbbbasdfasd";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "sdafasdfgefas";
+			printf("TEST STRING: %s\n\n", test_string);
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+
+			destroy_regex(tester);
 
 			return;
 
