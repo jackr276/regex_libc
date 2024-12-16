@@ -20,21 +20,22 @@ void test_case_run(u_int8_t test_case){
 	switch(test_case){
 		//Case 1 tests regular concatenation 
 		case 1:
-			printf("Testing plain concatenation with regex: \"abcd\":\n");
+			printf("Testing plain concatenation with regex\n");
+			printf("REGEX: 'abcd'\n");
 
 			// Define tester
 			tester = define_regular_expression("abcd", REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "aaa  b-b#bbbbabcdlmnop";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			//Define a test string -- should fail
 			test_string = "aaa  b-b#bbbbabclmnop";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -48,6 +49,7 @@ void test_case_run(u_int8_t test_case){
 		//Case 2 tests the 0 or 1 ? operator
 		case 2:
 			printf("Testing concatenation with ? operator:\n");
+			printf("REGEX: 'abc?d'\n\n");
 
 			//Define the regex
 			tester = define_regular_expression("abc?d", REGEX_VERBOSE);
@@ -61,7 +63,7 @@ void test_case_run(u_int8_t test_case){
 
 			//Define a test string
 			test_string = "aaabbbbbbabdlmnop";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -75,9 +77,10 @@ void test_case_run(u_int8_t test_case){
 		//Case 3 tests using the escape character ~
 		case 3:
 			printf("Testing the explicit escape character \\:\n");
+			printf("REGEX: 'ab\\(cd\\k)a'\n");
 
 			test_string = "aaaaaaab(cd)a";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 			//Define the regex
 			tester = define_regular_expression("ab\\(cd\\)a", REGEX_VERBOSE);
 
@@ -91,20 +94,21 @@ void test_case_run(u_int8_t test_case){
 			
 		case 4:
 			printf("Testing concatenation with | operator:\n");
+			printf("REGEX: 'ab|d'\n");
 
 			//Define the regex
 			tester = define_regular_expression("ab|d", REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "aaabbbbbbabcdlmnop";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "aacbbbbbbacdlmnop";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -117,13 +121,14 @@ void test_case_run(u_int8_t test_case){
 		//Case 5 tests kleene star
 		case 5:
 			printf("Testing the * operator:\n");
+			printf("REGEX: 'ab*c'\n");
 
 			//Initialization
 			tester = define_regular_expression("ab*c", REGEX_VERBOSE);
 
 			//Define the test string
 			test_string = "aaabbbbbbc a.kas";
-			printf("TEST STRING: %s\n", test_string);
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test matching
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -136,18 +141,21 @@ void test_case_run(u_int8_t test_case){
 		//Case 6 tests positive closure
 		case 6:
 			printf("Testing the + operator:\n");
+			printf("REGEX: 'ab+c'\n");
 			
 			//Initialization
 			tester = define_regular_expression("ab+c", REGEX_VERBOSE);
 		
 			//Define a test string
 			test_string = "aaabbbbcd";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//Test the matching, we should get one here
 			regex_match(tester, test_string, 0,  REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "aaacd";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//Test the matching, we should fail here
 			regex_match(tester, test_string, 0,  REGEX_VERBOSE);
@@ -162,12 +170,14 @@ void test_case_run(u_int8_t test_case){
 		//Case 7 tests positive closure
 		case 7:
 			printf("Testing the * operator alone:\n");
-			
+			printf("REGEX: 'aa*b'\n");
+
 			//Initialization
 			tester = define_regular_expression("aa*b", REGEX_VERBOSE);
 		
 			//Define a test string
 			test_string = "aaabbbbcd";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//Test the matching, we should get one here
 			regex_match(tester, test_string, 0,  REGEX_VERBOSE);
@@ -179,12 +189,14 @@ void test_case_run(u_int8_t test_case){
 
 		case 8:
 			printf("Testing associativity\n");
-			
+			printf("REGEX: 'a(bc)*'\n");
+
 			//Initialization
 			tester = define_regular_expression("a(bc)*", REGEX_VERBOSE);
 
 			//We should match here
 			test_string = "bcdabcbcbcbcbcd";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 			
@@ -194,14 +206,23 @@ void test_case_run(u_int8_t test_case){
 
 		case 9:
 			printf("More associativity tests\n");
+			printf("REGEX: 'a(bc)?d'\n");
 
 			//Initialization
 			tester = define_regular_expression("a(bc)?d", REGEX_VERBOSE);
 
 			//We should match
 			test_string = "zyxwvutabcdlmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+	
+
+			//We should match
+			test_string = "zyxwvutabcdlmnop";
+			printf("TEST STRING: %s\n\n", test_string);
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 			
+		
 			destroy_regex(tester);
 			
 			return;
@@ -215,6 +236,7 @@ void test_case_run(u_int8_t test_case){
 
 			//Should have a match here
 			test_string = "asdklf;asdfabcbcdlmnopd";
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 		
@@ -233,6 +255,27 @@ void test_case_run(u_int8_t test_case){
 			printf("Regex: (ab|da)bc\n");
 			//Does nothing for now due to brokenness
 			tester = define_regular_expression("(ab|da)bc", REGEX_VERBOSE);
+
+			//This should match
+			test_string = "aaaaaaabbcd";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//This should match
+			test_string = "aaaaaadabcd";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			//This should not match 
+			test_string = "asfdasdfabdabcda";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
 			return;
 		
 		return;
@@ -246,6 +289,7 @@ void test_case_run(u_int8_t test_case){
 
 			//Should have a match here
 			test_string = "asdklf;asdfabcbcdlmnoppppppdassd";
+			printf("TEST STRING: %s\n\n", test_string);
 			
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 		
@@ -260,6 +304,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("ab?cdef(ge)?a", REGEX_VERBOSE);
 			
 			test_string = "asdfasfdacdefgeakjs";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -276,6 +321,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("ab?cdef(ge)*a", REGEX_VERBOSE);
 			
 			test_string = "asdfasfdacdefgegeakjs";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -292,6 +338,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("ab*cdef(ge)?a", REGEX_VERBOSE);
 			
 			test_string = "as   --*dfasfdacdefgeakjs";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -308,6 +355,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("abc|de*f", REGEX_VERBOSE);
 
 			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -339,11 +387,13 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("((a|b)(c|d))a", REGEX_VERBOSE);
 
 			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			test_string = "acbcdbdefasfa";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -370,11 +420,13 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("(a|c)b", REGEX_VERBOSE);
 
 			test_string = "aaabbbbbbbbbbbbbbcasdfasd";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			test_string = "aacbbbbbbbbbbbbbbcasdfasd";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -392,6 +444,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("(ab(cd)bcd)(aflf)", REGEX_VERBOSE);
 
 			test_string = "aaaaavabcdbcdaflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -408,6 +461,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("(ab(cd)*bcd)(aflf)", REGEX_VERBOSE);
 
 			test_string = "aaaaavabcdcdcdcdcdcdcdbcdaflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -424,6 +478,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("(ab(cd)bcd)*(flf)", REGEX_VERBOSE);
 
 			test_string = "aaaaavabcdbcdabcdbcdflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -441,11 +496,13 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("(ab(cd)*bcd)+(flf)", REGEX_VERBOSE);
 
 			test_string = "aaaaavabcdbcdabcdbcdflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			test_string = "aaaaavabbcdabcdbcdflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -463,11 +520,13 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("(ab(cd)bcd)+(flf)+", REGEX_VERBOSE);
 
 			test_string = "aaaaavabcdbcdabcdbcdflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			test_string = "aaaaavabbcdabcdbcdflfas";
+			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -482,6 +541,10 @@ void test_case_run(u_int8_t test_case){
 	}
 }
 
+
+/**
+ * Runs the whole suite if no argument is passed in
+*/
 int main(int argc, char** argv){
 	u_int32_t argument;
 

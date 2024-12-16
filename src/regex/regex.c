@@ -1387,7 +1387,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		right_opt_mem = NULL;
 
 		//If we've already gotten to this guy from a split, we'll move right on
-		if(nfa_cursor->visited == 3 /*&& nfa_cursor->opt != ACCEPTING*/){
+		if(nfa_cursor->visited == 3){
 			nfa_cursor = nfa_cursor->next;
 			continue;
 		}
@@ -1471,7 +1471,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_ALTERNATE:	
 				nfa_cursor->visited = 3;
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(nfa_cursor->next, mode, 0);
+				left_opt = create_DFA(nfa_cursor->next, mode, 1);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
 
 				//Save these for later
