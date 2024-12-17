@@ -589,7 +589,6 @@ void test_case_run(u_int8_t test_case){
 
 			return;
 
-		//Not working
 		case 27:
 			printf("Testing parenthesization with kleene");
 			printf("REGEX: (ab(cd)*bcd)+e\n");
@@ -604,6 +603,30 @@ void test_case_run(u_int8_t test_case){
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			test_string = "aaaaavabbcdabcdbcdflfas";
+			printf("TEST STRING: %s\n\n", test_string);
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+
+			destroy_regex(tester);
+
+			return;
+
+		case 28:
+			printf("Testing parenthesization with kleene");
+			printf("REGEX: (ab(cd)*bcd)+\n");
+
+			//Initialization
+			tester = define_regular_expression("(ab(ef)*bcd)+", REGEX_VERBOSE);
+
+			test_string = "aaaaavabefefefefefbcdbbbcdeflfas";
+			printf("TEST STRING: %s\n\n", test_string);
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "aaaaavabbcdabbcdbcdflfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
@@ -632,7 +655,7 @@ int main(int argc, char** argv){
 	}
 	
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 28; i++){
+		for(u_int8_t i = 0; i < 29; i++){
 			test_case_run(i);
 		}
 	}
