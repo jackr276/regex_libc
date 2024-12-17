@@ -745,7 +745,7 @@ static char* in_to_post2(char* regex, regex_mode_t mode){
  */
 static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* next_opt){
 	//Allocate a state
- 	NFA_state_t* state = (NFA_state_t*)malloc(sizeof(NFA_state_t));
+ 	NFA_state_t* state = (NFA_state_t*)calloc(1, sizeof(NFA_state_t));
 
 	//Assign these values
 	state->visited = 0;
@@ -766,7 +766,7 @@ static NFA_state_t* create_state(u_int32_t opt, NFA_state_t* next, NFA_state_t* 
  */
 static NFA_fragement_t* create_fragment(NFA_state_t* start, fringe_states_t* fringe_states){
 	//Allocate our fragment
-	NFA_fragement_t* fragment = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
+	NFA_fragement_t* fragment = (NFA_fragement_t*)calloc(1, sizeof(NFA_fragement_t));
 
 	fragment->start = start;
 	fragment->fringe_states = fringe_states;
@@ -783,7 +783,7 @@ static NFA_fragement_t* create_fragment(NFA_state_t* start, fringe_states_t* fri
  */
 static fringe_states_t* init_list(NFA_state_t* state){
 	//Create a new fringe_states_t 
-	fringe_states_t* list = malloc(sizeof(fringe_states_t));
+	fringe_states_t* list = calloc(1, sizeof(fringe_states_t));
 
 	//Assign the state pointer
 	list->state = state;
@@ -969,7 +969,7 @@ static void print_DFA(DFA_state_t* dfa){
  */
 static NFA_state_t* copy_state(NFA_state_t* state){
 	//Create a new state
-	NFA_state_t* copy = (NFA_state_t*)malloc(sizeof(NFA_state_t));
+	NFA_state_t* copy = (NFA_state_t*)calloc(1, sizeof(NFA_state_t));
 
 	//Perform a deep copy
 	copy->visited = 0;
@@ -988,7 +988,7 @@ static NFA_state_t* copy_state(NFA_state_t* state){
  */
 static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag, NFA_state_t** tail){
 	//Create the fragment copy
-	NFA_fragement_t* copy = (NFA_fragement_t*)malloc(sizeof(NFA_fragement_t));
+	NFA_fragement_t* copy = (NFA_fragement_t*)calloc(1, sizeof(NFA_fragement_t));
 	NFA_state_t* copied_state = copy_state(frag->start);
 	
 	//Attach this to the linked list
@@ -1010,6 +1010,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 	//A linked list for us to hold all of our created states
 	//The very end of our linked list
 	NFA_state_t* tail =  NULL;
+	NFA_state_t* head = NULL;
 
 	//Declare these for use 
 	NFA_fragement_t* frag_2;
@@ -1064,6 +1065,12 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				//fragment start states
 				split = create_state(SPLIT_ALTERNATE, frag_1->start,  frag_2->start);
 
+				//Special case due to the way in which split states work
+				NFA_state_t* temp = head;
+				head = split;
+				head->next_created = temp;
+
+				/*
 				//If this is the very first state then it is our origin for the linked list
 				if(tail == NULL){
 					tail = split;
@@ -1071,6 +1078,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 					tail->next_created = split;
 					tail = split;
 				}
+				*/
 
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
@@ -1095,7 +1103,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				
 				//Store these in memory
 				if(tail == NULL){
-					tail = split;
+					head = tail = split;
 				} else {
 					tail->next_created = split;
 					tail = split;
@@ -1128,7 +1136,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 	
 				//If this is the very first state then it is our origin for the linked list
 				if(tail == NULL){
-					tail = split;
+					head = tail = split;
 				} else {
 					tail->next_created = split;
 					tail = split;
@@ -1164,7 +1172,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 				//If this is the very first state then it is our origin for the linked list
 				if(tail == NULL){
-					tail = split;
+					head = tail = split;
 				//We'll need to insert this into the linked list in the right position
 				} else {
 					//Add onto linked list
@@ -1194,7 +1202,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 				//Add to linked list
 				if(tail == NULL){
-					tail = s;
+					head = tail = s;
 				} else {
 					tail->next_created = s;
 					tail = s;
@@ -1215,7 +1223,7 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 				//Concatenate to linked list
 				if(tail == NULL){
-					tail = s;
+					head = tail = s;
 				} else {
 					tail->next_created = s;
 					tail = s;
@@ -1267,8 +1275,14 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 	//Free final
 	free(final);
 
-	//Free the postfix string
+	//Free the stack
 	destroy_stack(stack, STATES_ONLY);
+
+	NFA_state_t* cursor = starting_state;
+	while(cursor != NULL){
+		printf("TAIL: %d\n", cursor->opt);
+		cursor = cursor->next_created;
+	}
 
 	//Return a pointer to the final fragments starting state, as this fragment is the NFA
 	return starting_state;
@@ -1729,7 +1743,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
  */
 regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	//Stack allocate a regex
-	regex_t* regex = malloc(sizeof(regex_t));
+	regex_t* regex = calloc(1, sizeof(regex_t));
 	//Set to NULL as a flag
 	regex->NFA = NULL;
 	regex->DFA = NULL;
