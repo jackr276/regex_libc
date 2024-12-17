@@ -361,6 +361,7 @@ void test_case_run(u_int8_t test_case){
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
 
 			test_string = "acbcdbdefasfa";
+			printf("TEST STRING: %s\n\n", test_string);
 
 			//We should have a match
 			regex_match(tester, test_string, 0, REGEX_VERBOSE);
@@ -374,8 +375,22 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: a(bcd(ab)*)?efg\n");
 
 			//Initialization
-//			tester = define_regular_expression("a(bcd(ab)*)?efg", REGEX_VERBOSE);
-//			destroy_regex(tester);
+			tester = define_regular_expression("a(bcd(ab)*)?efg", REGEX_VERBOSE);
+
+			test_string = "sdaefgdefabcd";
+			printf("TEST STRING: %s\n\n", test_string);
+	
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "aaabcdababababefgdfa";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			//We should have a match
+			regex_match(tester, test_string, 0, REGEX_VERBOSE);
+
+			destroy_regex(tester);
+
 
 			return;
 
@@ -599,8 +614,6 @@ void test_case_run(u_int8_t test_case){
 
 			return;
 
-
-
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;
@@ -619,7 +632,7 @@ int main(int argc, char** argv){
 	}
 	
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 26; i++){
+		for(u_int8_t i = 0; i < 28; i++){
 			test_case_run(i);
 		}
 	}
