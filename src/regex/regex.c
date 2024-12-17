@@ -1359,7 +1359,7 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
  * method. We will recursively figure out which states are reachable from other states. Our
  * new linked list of states should help us with this
  */
-static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int16_t flag_states){
+static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int16_t flag_states, char go_until){
 	//The starting state for our DFA
 	DFA_state_t* previous;
 	DFA_state_t* temp;
@@ -1392,6 +1392,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			continue;
 		}
 
+		if(nfa_cursor->opt == go_until){
+			return dfa_start;
+		}
+
 		//We have different processing rules for each of our special cases. The default is of course that we just have a char
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
@@ -1399,10 +1403,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Create the DFA for the straight path, marking each state as "off limits" whenever we see it.
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
-				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0');
 
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt);
 
 				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
@@ -1471,8 +1475,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_ALTERNATE:	
 				nfa_cursor->visited = 3;
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(nfa_cursor->next, mode, 0);
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0);
+				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0');
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, '\0');
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1525,9 +1529,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				nfa_cursor->visited = 3;
 
 				//Create the entire left sub_dfa(this one does not repeat)
-				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0');
 				//Here is our actual "repeater"
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				//IDEA -- go until we see the next guy's opt
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt);
 
 
 				//Save these for later
@@ -1605,9 +1610,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Avoid an infinite loop
 				nfa_cursor->visited = 3;
 				//Create the left DFA
-				left_opt = create_DFA(nfa_cursor->next, mode, 1);
+				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0');
 				//Create the right DFA
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt);
 				
 
 				//Save these for later
@@ -1801,7 +1806,7 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex->DFA = create_DFA(regex->NFA, mode, 0);
+	regex->DFA = create_DFA(regex->NFA, mode, 0, '\0');
 
 	//If it didn't work
 	if(regex->DFA == NULL){
@@ -1816,8 +1821,6 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	//Display if desired
 	if(mode == REGEX_VERBOSE){
 		printf("DFA conversion succeeded.\n");
-//		print_DFA(regex->DFA);
-//		printf("\n");
 	}
 
 	//If it did work, we'll set everything to true
