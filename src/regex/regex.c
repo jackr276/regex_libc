@@ -1655,7 +1655,7 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 /**
  * The public facing match method that the user will call when attempting to pattern match
  */
-regex_match_t* regex_match(regex_t* regex, regex_match_t* match_struct, char* string, u_int32_t starting_index, regex_mode_t mode){
+void regex_match(regex_t* regex, regex_match_t* match_struct, char* string, u_int32_t starting_index, regex_mode_t mode){
 
 	//Error mode by default
 	match_struct->status = MATCH_ERR;
@@ -1675,7 +1675,7 @@ regex_match_t* regex_match(regex_t* regex, regex_match_t* match_struct, char* st
 		match_struct->status = MATCH_INV_INPUT;
 
 		//Give the regex back
-		return match_struct;
+		return;
 	}
 
 	//If we are given a bad string
@@ -1689,7 +1689,7 @@ regex_match_t* regex_match(regex_t* regex, regex_match_t* match_struct, char* st
 		match_struct->match_start_idx = 0;
 		match_struct->match_end_idx = 0;
 		match_struct->status = MATCH_INV_INPUT;
-		return match_struct;
+		return;
 	}
 
 	//Attempt to match the string with the regex
@@ -1697,7 +1697,7 @@ regex_match_t* regex_match(regex_t* regex, regex_match_t* match_struct, char* st
 
 
 	//Return the match struct
-	return match_struct;
+	return;
 }
 
 
