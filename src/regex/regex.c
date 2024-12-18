@@ -1655,12 +1655,10 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 /**
  * The public facing match method that the user will call when attempting to pattern match
  */
-regex_match_t regex_match(regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode){
-	//Stack allocated match struct
-	regex_match_t match_struct;
+regex_match_t* regex_match(regex_t* regex, regex_match_t* match_struct, char* string, u_int32_t starting_index, regex_mode_t mode){
 
 	//Error mode by default
-	match_struct.status = MATCH_ERR;
+	match_struct->status = MATCH_ERR;
 
 	//If we are given a bad regex 
 	if(regex->DFA == NULL || regex->state == REGEX_ERR){
@@ -1670,11 +1668,11 @@ regex_match_t regex_match(regex_t* regex, char* string, u_int32_t starting_index
 		}
 
 		//Pack in the values and return match.match_start = 0;
-		match_struct.match_start_idx = 0;
-		match_struct.match_end_idx = 0;
+		match_struct->match_start_idx = 0;
+		match_struct->match_end_idx = 0;
 
 		//We return this value so that the caller can know what the error was
-		match_struct.status = MATCH_INV_INPUT;
+		match_struct->status = MATCH_INV_INPUT;
 
 		//Give the regex back
 		return match_struct;
@@ -1688,14 +1686,14 @@ regex_match_t regex_match(regex_t* regex, char* string, u_int32_t starting_index
 		}
 
 		//Pack in the values and return
-		match_struct.match_start_idx = 0;
-		match_struct.match_end_idx = 0;
-		match_struct.status = MATCH_INV_INPUT;
+		match_struct->match_start_idx = 0;
+		match_struct->match_end_idx = 0;
+		match_struct->status = MATCH_INV_INPUT;
 		return match_struct;
 	}
 
 	//Attempt to match the string with the regex
-	match(&match_struct, regex, string, starting_index, mode);
+	match(match_struct, regex, string, starting_index, mode);
 
 
 	//Return the match struct

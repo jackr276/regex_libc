@@ -102,7 +102,7 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode);
  * the DFA in regex_t.
  * Returns 0 if no match, 1 if a match
  */
-regex_match_t regex_match(regex_t* regex, char* string, u_int32_t starting_index, regex_mode_t mode);
+regex_match_t regex_match(regex_t* regex, regex_match_t* match_struct, char* string, u_int32_t starting_index, regex_mode_t mode);
 
 
 /**
