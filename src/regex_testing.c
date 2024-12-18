@@ -1026,6 +1026,7 @@ void test_case_run(u_int8_t test_case){
 			printf("TEST STRING: %s\n\n", test_string);
 			
 			regex_match(tester, &matcher, test_string, 0, REGEX_SILENT);
+			printf("%d\n", matcher.status);
 
 			//Display if we've found a match
 			if(matcher.status == MATCH_FOUND){
@@ -1483,13 +1484,13 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: (ab(cd)*bcd)+e\n");
 
 			//Initialization
-			tester = define_regular_expression("(ab(ef)*bcd)+e", REGEX_VERBOSE);
+			tester = define_regular_expression("(ab(ef)*bcd)+e", REGEX_SILENT);
 
 			test_string = "aaaaavabefefefefefbcdabbcdeflfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
-			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+			regex_match(tester, &matcher, test_string, 0, REGEX_SILENT);
 	
 			//Display if we've found a match
 			if(matcher.status == MATCH_FOUND){
@@ -1502,7 +1503,7 @@ void test_case_run(u_int8_t test_case){
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
-			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+			regex_match(tester, &matcher, test_string, 0, REGEX_SILENT);
 	
 			//Display if we've found a match
 			if(matcher.status == MATCH_FOUND){
@@ -1520,13 +1521,13 @@ void test_case_run(u_int8_t test_case){
 			printf("REGEX: (ab(cd)*bcd)+\n");
 
 			//Initialization
-			tester = define_regular_expression("(ab(ef)*bcd)+", REGEX_VERBOSE);
+			tester = define_regular_expression("(ab(ef)*bcd)+", REGEX_SILENT);
 
 			test_string = "aaaaavabefefefefefbcdbbbcdeflfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
-			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+			regex_match(tester, &matcher, test_string, 0, REGEX_SILENT);
 
 			//Display if we've found a match
 			if(matcher.status == MATCH_FOUND){
@@ -1539,7 +1540,7 @@ void test_case_run(u_int8_t test_case){
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
-			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+			regex_match(tester, &matcher, test_string, 0, REGEX_SILENT);
 
 			//Display if we've found a match
 			if(matcher.status == MATCH_FOUND){
@@ -1570,8 +1571,9 @@ int main(int argc, char** argv){
 		test_case_run(argument);
 	}
 	
+	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 29; i++){
+		for(u_int8_t i = 0; i < 57; i++){
 			test_case_run(i);
 		}
 	}

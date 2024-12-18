@@ -964,7 +964,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 	NFA_state_t* cursor = starting_state;
 	while(cursor != NULL){
-		printf("TAIL: %d\n", cursor->opt);
 		cursor = cursor->next_created;
 	}
 
@@ -1611,15 +1610,16 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 			current_state = start_state;
 		}
 
-		if(current_state == NULL) printf("I AM NULL");
 		if(current_state->nfa_state_list.contains_accepting_state == 1){
 			//We've found the match
 			match->status = MATCH_FOUND;
 
 			if(mode == REGEX_VERBOSE){
 				printf("Match found!\n");
-				return;
 			}
+
+			return;
+
 		}
 
 		//Push the pointer up
@@ -1637,8 +1637,9 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 
 		if(mode == REGEX_VERBOSE){
 			printf("Match found!\n");
-			return;
 		}
+
+		return;
 	}
 
 
@@ -1694,7 +1695,6 @@ void regex_match(regex_t* regex, regex_match_t* match_struct, char* string, u_in
 
 	//Attempt to match the string with the regex
 	match(match_struct, regex, string, starting_index, mode);
-
 
 	//Return the match struct
 	return;
