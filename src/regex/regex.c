@@ -198,6 +198,78 @@ char* in_to_post(char* regex, regex_mode_t mode){
 				cursor++;
 
 				break;
+			//We can see [0-9] or [a-z] or [A-Z] 
+			case '[':
+				//If the previous char was an open paren, we won't
+				//add a concatenation
+				if(previous_char != '(' && previous_char != '|'){
+					*concat_cursor = '`';
+					concat_cursor++;
+				}
+
+				cursor++;
+				printf("%c\n", *cursor);
+
+				if(*cursor == '0'){
+					//We need to see this sequence, otherwise it's bad
+					if(*(cursor + 1) != '-' || *(cursor + 2) != '9' || *(cursor+3) != ']'){
+						if(mode == REGEX_VERBOSE){
+							printf("ERROR: Invalid range provided\n");
+						}
+						//This is bad so we'll get out
+						return NULL;
+					}
+
+				} else if (*cursor == 'a'){
+					//We need to see this sequence, otherwise it's bad
+					if(*(cursor + 1) != '-' || *(cursor + 2) != 'z' || *(cursor+3) != ']'){
+						if(mode == REGEX_VERBOSE){
+							printf("ERROR: Invalid range provided\n");
+						}
+						//This is bad so we'll get out
+						return NULL;
+					}
+
+				} else if (*cursor == 'A'){
+					//We need to see this sequence, otherwise it's bad
+					if(*(cursor + 1) != '-' || *(cursor + 2) != 'Z' || *(cursor+3) != ']'){
+						if(mode == REGEX_VERBOSE){
+							printf("ERROR: Invalid range provided\n");
+						}
+						//This is bad so we'll get out
+						return NULL;
+					}
+
+				} else {
+					if(mode == REGEX_VERBOSE){
+						printf("ERROR: Invalid range provided\n");
+					}
+
+					//This is bad so we'll get out
+					return NULL;
+				}
+
+				//Go through and add them in
+				*concat_cursor = '[';
+				concat_cursor++;
+				//These can vary based on what is actually in here
+				*concat_cursor = *cursor;
+				concat_cursor++;
+				*concat_cursor = *(cursor + 1);
+				concat_cursor++;
+				*concat_cursor = *(cursor + 2);
+				concat_cursor++;
+				*concat_cursor = ']';
+				concat_cursor++;
+
+				//Record the previous char here
+				previous_char = *concat_cursor;
+
+				//Move ahead
+				cursor += 4;
+
+				break;
+					
 			//Now we can handle all of our letters
 			default:
 				//If the previous char was an open paren, we won't
@@ -910,6 +982,33 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 			
 				break;	
 
+			//Range numbers
+			case '[':
+				//We've already done checking by now to make sure that this is actually valid
+				if(*(cursor+1) == '0'){
+					s = create_state(NUMBER, NULL, NULL);
+				}
+
+				//Concatenate to linked list
+				if(tail == NULL){
+					head = tail = s;
+				} else {
+					tail->next_created = s;
+					tail = s;
+				}
+
+				//Create a fragment, with the fringe states of that fragment being just this new state that we
+				//created
+				fragment = create_fragment(s,  init_list(s));
+
+				//Push the fragment onto the stack. We will pop it off when we reach operators
+				push(stack, fragment);
+
+				cursor += 4;
+
+				break;
+				
+
 			//Any character that is not one of the special characters
 			default:
 				//Create a new state with the charcter, and no attached states
@@ -1416,6 +1515,26 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				nfa_cursor = nfa_cursor->next;
 				break;
 
+			//Number range
+			case NUMBER:
+				temp = create_DFA_state(nfa_cursor);
+			
+				//All numbers will point to this
+				for(u_int16_t i = '0'; i < '9' + 1; i++){
+					previous->transitions[i] = temp;
+				}
+
+				previous->next = temp;
+				previous = temp;
+
+				if(flag_states == 1){
+					//We've now visited here
+					nfa_cursor->visited = 3;
+				}
+
+				//Advance the pointer
+				nfa_cursor = nfa_cursor->next;
+				break;
 
 			default:
 				temp = create_DFA_state(nfa_cursor);

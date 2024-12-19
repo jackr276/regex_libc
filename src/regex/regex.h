@@ -18,6 +18,12 @@
 #define SPLIT_POSITIVE_CLOSURE 130
 //Define a wildcard
 #define WILDCARD 132
+//Define number 0-9
+#define NUMBER 133
+//Define our a-z range
+#define LOWERCASE 134
+//Define our A-Z range
+#define UPPERCASE 135
 //The maximum length of a regex is 150
 #define REGEX_LEN 150
 //This is the explicit concatenation character. It is used in place of actual concatenation

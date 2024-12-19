@@ -1664,6 +1664,34 @@ void test_case_run(u_int8_t test_case){
 
 			//Break out if we don't fall through
 			return;
+
+		//Wildcard character
+		case 61:
+			printf("Testing range [0-9]\n");
+			printf("REGEX: 'a[0-9]d'\n");
+
+			// Define tester
+			tester = define_regular_expression("a[0-9]d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "a9dsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "add  b-b#bbbba2dbclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
 	
 
 		//Added to avoid comptime errors, we shouldn't reach this
