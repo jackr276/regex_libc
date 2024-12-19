@@ -1692,8 +1692,61 @@ void test_case_run(u_int8_t test_case){
 
 			//Break out if we don't fall through
 			return;
-	
 
+		case 62:
+			printf("Testing range [a-z]\n");
+			printf("REGEX: 'a[a-z]d'\n");
+
+			// Define tester
+			tester = define_regular_expression("a[a-z]d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aldsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "ad  b-b#bbbbasdbclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+	
+		case 63:
+			printf("Testing range [A-Z]\n");
+			printf("REGEX: 'a[A-Z]d'\n");
+
+			// Define tester
+			tester = define_regular_expression("a[A-Z]d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aFdsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "add  b-b#bbbbaZdbclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+	
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;

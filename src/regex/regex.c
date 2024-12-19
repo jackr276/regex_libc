@@ -987,6 +987,10 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				//We've already done checking by now to make sure that this is actually valid
 				if(*(cursor+1) == '0'){
 					s = create_state(NUMBER, NULL, NULL);
+				} else if (*(cursor + 1) == 'a'){
+					s = create_state(LOWERCASE, NULL, NULL);
+				} else {
+					s = create_state(UPPERCASE, NULL, NULL);
 				}
 
 				//Concatenate to linked list
@@ -1535,7 +1539,47 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Advance the pointer
 				nfa_cursor = nfa_cursor->next;
 				break;
+			
+			case LOWERCASE:
+				temp = create_DFA_state(nfa_cursor);
+			
+				//All numbers will point to this
+				for(u_int16_t i = 'a'; i < 'z' + 1; i++){
+					previous->transitions[i] = temp;
+				}
 
+				previous->next = temp;
+				previous = temp;
+
+				if(flag_states == 1){
+					//We've now visited here
+					nfa_cursor->visited = 3;
+				}
+
+				//Advance the pointer
+				nfa_cursor = nfa_cursor->next;
+				break;
+
+			case UPPERCASE:
+				temp = create_DFA_state(nfa_cursor);
+			
+				//All numbers will point to this
+				for(u_int16_t i = 'A'; i < 'Z' + 1; i++){
+					previous->transitions[i] = temp;
+				}
+
+				previous->next = temp;
+				previous = temp;
+
+				if(flag_states == 1){
+					//We've now visited here
+					nfa_cursor->visited = 3;
+				}
+
+				//Advance the pointer
+				nfa_cursor = nfa_cursor->next;
+				break;
+			
 			default:
 				temp = create_DFA_state(nfa_cursor);
 				//Patch in all of our new states
