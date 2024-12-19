@@ -512,7 +512,7 @@ void test_case_run(u_int8_t test_case){
 	
 		//Not working
 		case 24:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with kleene and positive closure\n");
 			printf("REGEX: (ab(cd)*bcd)+(flf)\n");
 
 			//Initialization
@@ -536,7 +536,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 25:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with kleene\n");
 			printf("REGEX: (ab(cd)bcd)+(flf)*\n");
 
 			//Initialization
@@ -583,7 +583,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 27:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with kleene and positive closure\n");
 			printf("REGEX: (ab(cd)*bcd)+e\n");
 
 			//Initialization
@@ -606,7 +606,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 28:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with kleene\n");
 			printf("REGEX: (ab(cd)*bcd)+\n");
 
 			//Initialization
@@ -1406,7 +1406,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 53:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with positive closure\n");
 			printf("REGEX: (ab(cd)bcd)+(flf)*\n");
 
 			//Initialization
@@ -1480,7 +1480,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 55:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with kleene\n");
 			printf("REGEX: (ab(cd)*bcd)+e\n");
 
 			//Initialization
@@ -1517,7 +1517,7 @@ void test_case_run(u_int8_t test_case){
 			return;
 
 		case 56:
-			printf("Testing parenthesization with kleene");
+			printf("Testing parenthesization with kleene\n");
 			printf("REGEX: (ab(cd)*bcd)+\n");
 
 			//Initialization
@@ -1553,6 +1553,118 @@ void test_case_run(u_int8_t test_case){
 
 			return;
 
+		//Wildcard character
+		case 57:
+			printf("Testing wildcard character\n");
+			printf("REGEX: 'a$cd'\n");
+
+			// Define tester
+			tester = define_regular_expression("a$cd", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aaa  b-b#bbbbascdlmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "aaa  b-b#bbbbabclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+	
+		//Wildcard character
+		case 58:
+			printf("Testing wildcard character\n");
+			printf("REGEX: 'a(l$l)*cd'\n");
+
+			// Define tester
+			tester = define_regular_expression("a(l$l)*cd", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aaa  b-b#bbbbalollalldlcdlmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "aaa  b-b#bbbbabclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+
+		//Wildcard character
+		case 59:
+			printf("Testing wildcard character\n");
+			printf("REGEX: 'a(l$a)*cd'\n");
+
+			// Define tester
+			tester = define_regular_expression("a(l$a)*cd", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "adsfaloalaalbacdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "aaa  b-b#bbbbabclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+
+		//Wildcard character
+		case 60:
+			printf("Testing wildcard escape\n");
+			printf("REGEX: 'a\\$cd'\n");
+
+			// Define tester
+			tester = define_regular_expression("a\\$cd", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "adsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should fail
+			test_string = "aaa  b-b#bbbbabclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+	
 
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
@@ -1573,7 +1685,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 57; i++){
+		for(u_int8_t i = 0; i < 60; i++){
 			test_case_run(i);
 		}
 	}

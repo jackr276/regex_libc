@@ -16,6 +16,8 @@
 #define SPLIT_KLEENE 129 
 //Split_Pos_clos is specifically used for the positive closure(+) operator
 #define SPLIT_POSITIVE_CLOSURE 130
+//Define a wildcard
+#define WILDCARD 132
 //The maximum length of a regex is 150
 #define REGEX_LEN 150
 //This is the explicit concatenation character. It is used in place of actual concatenation

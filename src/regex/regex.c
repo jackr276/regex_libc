@@ -76,7 +76,7 @@ struct NFA_fragement_t {
  * NFA states. This struct will be used for this purpose
  */
 struct NFA_state_list_t {
-	NFA_state_t* states[140];
+	NFA_state_t* states[145];
 	u_int16_t length;
 	//Does this list contain an accepting state?
 	u_int8_t contains_accepting_state;
@@ -92,7 +92,7 @@ struct DFA_state_t {
 	NFA_state_list_t nfa_state_list;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
-	DFA_state_t* transitions[140];
+	DFA_state_t* transitions[145];
 	//The next dfa_state that was made, this will help us in freeing
 	DFA_state_t* next;
 };
@@ -754,16 +754,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				head = split;
 				head->next_created = temp;
 
-				/*
-				//If this is the very first state then it is our origin for the linked list
-				if(tail == NULL){
-					tail = split;
-				} else {
-					tail->next_created = split;
-					tail = split;
-				}
-				*/
-
 				//Combine the two fringe lists to get the new list of all fringe states for this fragment
 				fringe_states_t* combined = concatenate_lists(frag_1->fringe_states, frag_2->fringe_states);
 
@@ -899,6 +889,26 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				push(stack, fragment);
 
 				break;
+
+			//Wildcard
+			case '$':
+				s = create_state(WILDCARD, NULL, NULL);
+				//Concatenate to linked list
+				if(tail == NULL){
+					head = tail = s;
+				} else {
+					tail->next_created = s;
+					tail = s;
+				}
+
+				//Create a fragment, with the fringe states of that fragment being just this new state that we
+				//created
+				fragment = create_fragment(s,  init_list(s));
+
+				//Push the fragment onto the stack. We will pop it off when we reach operators
+				push(stack, fragment);
+			
+				break;	
 
 			//Any character that is not one of the special characters
 			default:
@@ -1382,6 +1392,30 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Get out
 				return dfa_start;
+
+			//Wildcard
+			case WILDCARD:
+				//Create a blank state
+				temp = create_DFA_state(nfa_cursor);
+
+				for(u_int16_t i = 0; i < 126; i++){
+					//All characters point to the wildcard
+					previous->transitions[i] = temp;
+				}
+
+				//Advance the pointer
+				previous->next = temp;
+				previous = temp;
+
+				if(flag_states == 1){
+					//We've now visited here
+					nfa_cursor->visited = 3;
+				}
+
+				//Advance the pointer
+				nfa_cursor = nfa_cursor->next;
+				break;
+
 
 			default:
 				temp = create_DFA_state(nfa_cursor);
