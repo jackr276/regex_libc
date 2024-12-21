@@ -1746,6 +1746,87 @@ void test_case_run(u_int8_t test_case){
 
 			//Break out if we don't fall through
 			return;
+
+		case 64:
+			printf("Testing range [A-Z]\n");
+			printf("REGEX: 'a[A-Z]?d'\n");
+
+			// Define tester
+			tester = define_regular_expression("a[A-Z]?d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "adsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "all  b-b#bbbbaZdbclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+
+		case 65:
+			printf("Testing range [A-Z]\n");
+			printf("REGEX: 'a([a-z]|[A-Z])d'\n");
+
+			// Define tester
+			tester = define_regular_expression("a([A-Z]|[a-z])d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "aZdsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "all  b-b#bbbbafdbclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
+	
+		case 66:
+			printf("Testing range [A-Z]\n");
+			printf("REGEX: 'a[0-9]*d'\n");
+
+			// Define tester
+			tester = define_regular_expression("a[0-9]*d", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "a2341421235125dsfaloalaalba$cdas";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "all  b-b#bbbba21222222dbclmnop";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+			//Break out if we don't fall through
+			return;
 	
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
@@ -1766,7 +1847,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 60; i++){
+		for(u_int8_t i = 0; i < 67; i++){
 			test_case_run(i);
 		}
 	}

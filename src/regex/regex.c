@@ -1293,27 +1293,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Connect previous to left_opt
 				connect_DFA_states(previous, left_opt);
 
-				/*
-				//Make everything in previous reference point to left_opt
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = left_opt;
-				}
-				*/
 				//Connect previous to right_opt
 				connect_DFA_states(previous, right_opt);
 				
-				
-				/*
-				//Make everything in previous point to right_opt
-				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = right_opt;
-				}
-				*/
-
 				//Now we'll need to ensure that right_opt(At the very end) points to left_opt
-
 				//Let's first advance to the very end of right_opt
 				cursor = right_opt;
 				//Advance to very end
@@ -1323,14 +1306,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Connect the cursor to left_opt
 				connect_DFA_states(cursor, left_opt);
-				
-				/*
-				//Now cursor has the end of right_opt, so let's make it point to left_opt
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					cursor->transitions[opt] = left_opt;
-				}
-				*/
 
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
@@ -1372,25 +1347,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				
 				//Connect previous to left_opt
 				connect_DFA_states(previous, left_opt);
-				/*
-				//Patching in left_opt
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = left_opt;
-				}
-				*/
 
 				//Connect previous to right_opt
 				connect_DFA_states(previous, right_opt);
-				/*
-				//Patching in right_opt
-				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = right_opt;
-				}
-				*/
 
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
@@ -1434,20 +1393,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				 * then patch in right opt as well. Finally, we'll make it so that right_opt
 				 * points back to its own beginning
 				 */
+
+				//Connect previous to left_opt
+				connect_DFA_states(previous, left_opt);
 				
-				//Patching in left_opt
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = left_opt;
-				}
-					
-				//Patching in right_opt
-				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = right_opt;
-				}
+				//Connect previous to right_opt
+				connect_DFA_states(previous, right_opt);
 
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
@@ -1460,20 +1411,14 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Now that we're here, cursor holds the very end of the right sub-DFA
 				//Everything that we have in the cursor must point back to the left DFA
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					cursor->transitions[opt] = left_opt;
-				}
-					
+
+				//Connect cursor to left_opt
+				connect_DFA_states(cursor, left_opt);
+
 				//Patching in right_opt
 				//Everything that we have in the cursor must also point back to the right DFA
-				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
-					cursor->transitions[opt] = right_opt;
-				}
-			
+				connect_DFA_states(cursor, right_opt);
+					
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
 				previous = left_opt_mem;
@@ -1515,20 +1460,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				 * points back to its own beginning
 				 */
 
-				//Patching in left_opt
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = left_opt;
-				}
-					
-				//Patching in right_opt
-				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
-					previous->transitions[opt] = right_opt;
-				}
-
+				//Connect previous to left_opt
+				connect_DFA_states(previous,left_opt);
+			
+				//Connect previous to right_opt
+				connect_DFA_states(previous, right_opt);
 
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
@@ -1541,20 +1477,14 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Now that we're here, cursor holds the very end of the right sub-DFA
 				//Everything that we have in the cursor must point back to the left DFA
-				for(u_int16_t i = 0; i < left_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = left_opt->nfa_state_list.states[i]->opt;
-					cursor->transitions[opt] = left_opt;
-				}
-					
-				//Patching in right_opt
+				
+				//Connect cursor to left_opt
+				connect_DFA_states(cursor, left_opt);
+				
 				//Everything that we have in the cursor must also point back to the right DFA
-				for(u_int16_t i = 0; i < right_opt->nfa_state_list.length; i++){
-					//Grab the char
-					u_int16_t opt = right_opt->nfa_state_list.states[i]->opt;
-					cursor->transitions[opt] = right_opt;
-				}
-
+				//Connect cursor to right_opt
+				connect_DFA_states(cursor, right_opt);
+			
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
 				previous = left_opt_mem;
@@ -1571,72 +1501,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Get out
 				return dfa_start;
-
-			//Wildcard
-			case WILDCARD:
-				//Create a blank state
-				temp = create_DFA_state(nfa_cursor);
-
-				for(u_int16_t i = 0; i < 126; i++){
-					//All characters point to the wildcard
-					previous->transitions[i] = temp;
-				}
-
-				//Advance the pointer
-				previous->next = temp;
-				previous = temp;
-
-				if(flag_states == 1){
-					//We've now visited here
-					nfa_cursor->visited = 3;
-				}
-
-				//Advance the pointer
-				nfa_cursor = nfa_cursor->next;
-				break;
-
-			/*
-			//Number range
-			case NUMBER:
-				temp = create_DFA_state(nfa_cursor);
-			
-				//All numbers will point to this
-				for(u_int16_t i = '0'; i < '9' + 1; i++){
-					previous->transitions[i] = temp;
-				}
-
-				previous->next = temp;
-				previous = temp;
-
-				if(flag_states == 1){
-					//We've now visited here
-					nfa_cursor->visited = 3;
-				}
-
-				//Advance the pointer
-				nfa_cursor = nfa_cursor->next;
-				break;
-			
-			case LOWERCASE:
-				temp = create_DFA_state(nfa_cursor);
-			
-				//All numbers will point to this
-				for(u_int16_t i = 'a'; i < 'z' + 1; i++){
-					previous->transitions[i] = temp;
-				}
-
-				previous->next = temp;
-				previous = temp;
-
-				if(flag_states == 1){
-					//We've now visited here
-					nfa_cursor->visited = 3;
-				}
-
-				//Advance the pointer
-				nfa_cursor = nfa_cursor->next;
-				break;
-			*/
 
 			default:
 				//Create our state
