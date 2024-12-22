@@ -1828,6 +1828,37 @@ void test_case_run(u_int8_t test_case){
 			//Break out if we don't fall through
 			return;
 	
+		case 67:
+			printf("Testing quote detection\n");
+			printf("Regex: [a-z]+");
+	
+			tester = define_regular_expression("[a-z]+", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "hi.";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "hello world.";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "\"\"";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+
+
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;

@@ -121,7 +121,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 	//Check that all characters passed in are printable characters. If they aren't
 	//simply exit
 	for(char* regex_cursor = regex; *regex_cursor != '\0'; regex_cursor++){
-		if(*regex_cursor < 33 || *regex_cursor > 126){
+		if(*regex_cursor < 32 || *regex_cursor > 126){
 			if(mode == REGEX_VERBOSE){
 				printf("ERROR: Non-printable character passed in\n");
 			}
@@ -143,13 +143,8 @@ char* in_to_post(char* regex, regex_mode_t mode){
 	char* concat_cursor = regex_with_concatenation;
 
 	//Keep track of the last thing that we saw
-	char previous_char = *cursor;
-	//Add onto the concat_cursor
-	*concat_cursor = *cursor;
-	//Advance up
-	cursor++;
-	concat_cursor++;
-
+	char previous_char = '\0';
+	
 	//Go through and add everything into the regex_with_concatenation string
 	while(*cursor != '\0'){
 		switch(*cursor){
@@ -169,7 +164,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 			//Handle an open parenthesis
 			case '(':
 				//This is the one case that we will not concatenate
-				if(previous_char == '|' || previous_char == '('){
+				if(previous_char == '\0' || previous_char == '|' || previous_char == '('){
 					*concat_cursor = *cursor;
 					cursor++;
 					concat_cursor++;
@@ -190,7 +185,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 			//This is our escape character
 			case '\\':
 				//We can add in concatenation here
-				if(previous_char != '(' && previous_char != '|'){
+				if(previous_char != '\0' && previous_char != '(' && previous_char != '|'){
 					*concat_cursor = '`';
 					concat_cursor++;
 				}
@@ -210,13 +205,12 @@ char* in_to_post(char* regex, regex_mode_t mode){
 			case '[':
 				//If the previous char was an open paren, we won't
 				//add a concatenation
-				if(previous_char != '(' && previous_char != '|'){
+				if(previous_char !='\0' && previous_char != '(' && previous_char != '|'){
 					*concat_cursor = '`';
 					concat_cursor++;
 				}
 
 				cursor++;
-				printf("%c\n", *cursor);
 
 				if(*cursor == '0'){
 					//We need to see this sequence, otherwise it's bad
@@ -271,7 +265,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 				concat_cursor++;
 
 				//Record the previous char here
-				previous_char = *concat_cursor;
+				previous_char = ']';
 
 				//Move ahead
 				cursor += 4;
@@ -282,7 +276,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 			default:
 				//If the previous char was an open paren, we won't
 				//add a concatenation
-				if(previous_char != '(' && previous_char != '|'){
+				if(previous_char != '\0' && previous_char != '(' && previous_char != '|'){
 					*concat_cursor = '`';
 					concat_cursor++;
 				}
