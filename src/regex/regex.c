@@ -88,6 +88,8 @@ struct NFA_state_list_t {
 	u_int8_t contains_lowercase;
 	//Does this state contain uppercase?
 	u_int8_t contains_uppercase;
+	//Does this have all the letters
+	u_int8_t contains_letters;
 };
 
 
@@ -201,7 +203,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 				cursor++;
 
 				break;
-			//We can see [0-9] or [a-z] or [A-Z] 
+			//We can see [0-9] or [a-z] or [A-Z] or [a-zA-z]
 			case '[':
 				//If the previous char was an open paren, we won't
 				//add a concatenation
@@ -224,12 +226,37 @@ char* in_to_post(char* regex, regex_mode_t mode){
 
 				} else if (*cursor == 'a'){
 					//We need to see this sequence, otherwise it's bad
-					if(*(cursor + 1) != '-' || *(cursor + 2) != 'z' || *(cursor+3) != ']'){
+					if(*(cursor + 1) != '-' || *(cursor + 2) != 'z'){
 						if(mode == REGEX_VERBOSE){
 							printf("ERROR: Invalid range provided\n");
 						}
 						//This is bad so we'll get out
 						return NULL;
+					}
+					//Let's see which we actually have here
+					if(*(cursor+3) == ']'){
+						//Jump to our basic range
+						goto basic_range;
+					} else {
+						//Otherwise we should have A-Z left
+						if(*(cursor + 3) != 'A' || *(cursor + 4) != '-' || *(cursor + 5) != 'Z'){
+							if(mode == REGEX_VERBOSE){
+								printf("ERROR: Invalid range provided\n");
+							}
+							//This is bad so we'll get out
+							return NULL;
+						}
+
+						//Add this on
+						strcat(regex_with_concatenation, "[a-zA-Z]");
+						previous_char = ']';
+						
+						//Jump ahead here
+						concat_cursor += 8;
+						//Jump ahead
+						cursor += 7;
+						
+						break;
 					}
 
 				} else if (*cursor == 'A'){
@@ -251,6 +278,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 					return NULL;
 				}
 
+			basic_range:
 				//Go through and add them in
 				*concat_cursor = '[';
 				concat_cursor++;
@@ -989,10 +1017,18 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				//We've already done checking by now to make sure that this is actually valid
 				if(*(cursor+1) == '0'){
 					s = create_state(NUMBER, NULL, NULL);
+					cursor += 4;
 				} else if (*(cursor + 1) == 'a'){
-					s = create_state(LOWERCASE, NULL, NULL);
-				} else {
+					if(strlen(cursor) > 3 && *(cursor + 4) == 'A'){
+						s = create_state(LETTERS, NULL, NULL);
+						cursor += 7;
+					} else {
+						s = create_state(LOWERCASE, NULL, NULL);
+						cursor += 4;
+					}
+				} else if (*(cursor + 1) == 'A'){
 					s = create_state(UPPERCASE, NULL, NULL);
+					cursor += 4;
 				}
 
 				//Concatenate to linked list
@@ -1009,8 +1045,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 
 				//Push the fragment onto the stack. We will pop it off when we reach operators
 				push(stack, fragment);
-
-				cursor += 4;
 
 				break;
 				
@@ -1132,6 +1166,8 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 		list->contains_lowercase = 1;
 	} else if(start->opt == UPPERCASE){
 		list->contains_uppercase = 1;
+	} else if(start->opt == LETTERS){
+		list->contains_letters = 1;
 	}
 }
 
@@ -1198,6 +1234,14 @@ void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
 		}
 	//If we have '[A-Z]'
 	} else if(connecter->nfa_state_list.contains_uppercase == 1){
+		for(u_int16_t i = 'A'; i <= 'Z'; i++){
+			previous->transitions[i] = connecter;
+		}
+	//If we have '[a-zA-Z]'
+	} else if(connecter->nfa_state_list.contains_letters == 1){
+		for(u_int16_t i = 'a'; i <= 'z'; i++){
+			previous->transitions[i] = connecter;
+		}
 		for(u_int16_t i = 'A'; i <= 'Z'; i++){
 			previous->transitions[i] = connecter;
 		}

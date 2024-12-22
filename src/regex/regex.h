@@ -24,6 +24,8 @@
 #define LOWERCASE 134
 //Define our A-Z range
 #define UPPERCASE 135
+//Define a-zA-Z
+#define LETTERS 136
 //The maximum length of a regex is 150
 #define REGEX_LEN 150
 //This is the explicit concatenation character. It is used in place of actual concatenation
