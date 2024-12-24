@@ -3,8 +3,7 @@
  * This file contains the implementation for the regex library API defined in 
  * regex.h . Specifically, this file will generate a state machine that recognizes
  * strings belonging to a regular expression
- */
-#include "regex.h" 
+ */ #include "regex.h" 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1432,12 +1431,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				 * then patch in right opt as well. Finally, we'll make it so that right_opt
 				 * points back to its own beginning
 				 */
+				//Connect previous to right_opt
+				connect_DFA_states(previous, right_opt);
 
 				//Connect previous to left_opt
 				connect_DFA_states(previous, left_opt);
-				
-				//Connect previous to right_opt
-				connect_DFA_states(previous, right_opt);
 
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
@@ -1450,13 +1448,13 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Now that we're here, cursor holds the very end of the right sub-DFA
 				//Everything that we have in the cursor must point back to the left DFA
-
-				//Connect cursor to left_opt
-				connect_DFA_states(cursor, left_opt);
-
+				
 				//Patching in right_opt
 				//Everything that we have in the cursor must also point back to the right DFA
 				connect_DFA_states(cursor, right_opt);
+
+				//Connect cursor to left_opt
+				connect_DFA_states(cursor, left_opt);
 					
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
@@ -1498,13 +1496,13 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				 * then patch in right opt as well. Finally, we'll make it so that right_opt
 				 * points back to its own beginning
 				 */
-
-				//Connect previous to left_opt
-				connect_DFA_states(previous,left_opt);
-			
+		
 				//Connect previous to right_opt
 				connect_DFA_states(previous, right_opt);
 
+				//Connect previous to left_opt
+				connect_DFA_states(previous,left_opt);
+	
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
 				cursor = right_opt;
@@ -1517,12 +1515,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Now that we're here, cursor holds the very end of the right sub-DFA
 				//Everything that we have in the cursor must point back to the left DFA
 				
-				//Connect cursor to left_opt
-				connect_DFA_states(cursor, left_opt);
-				
 				//Everything that we have in the cursor must also point back to the right DFA
 				//Connect cursor to right_opt
 				connect_DFA_states(cursor, right_opt);
+
+				//Connect cursor to left_opt
+				connect_DFA_states(cursor, left_opt);
 			
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;

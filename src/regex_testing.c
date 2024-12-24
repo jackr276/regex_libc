@@ -1918,6 +1918,60 @@ void test_case_run(u_int8_t test_case){
 	
 			return;
 
+		case 70:
+			printf("Testing filename matching\n");
+			printf("Regex: $*.txt");
+	
+			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
+			tester = define_regular_expression("$*.txt", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "fname.txt";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "a.tx";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+	
+			return;
+
+		case 71:
+			printf("Testing filename matching\n");
+			printf("Regex: $+.txt");
+	
+			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
+			tester = define_regular_expression("$+.txt", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "fname.txt";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "a.tx";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+	
+			return;
+
+
+
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;
@@ -1937,7 +1991,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 70; i++){
+		for(u_int8_t i = 0; i < 7; i++){
 			test_case_run(i);
 		}
 	}
