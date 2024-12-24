@@ -4,7 +4,6 @@
  * regex.h . Specifically, this file will generate a state machine that recognizes
  * strings belonging to a regular expression
  */
-
 #include "regex.h" 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1047,7 +1046,6 @@ static NFA_state_t* create_NFA(char* postfix, regex_mode_t mode){
 				push(stack, fragment);
 
 				break;
-				
 
 			//Any character that is not one of the special characters
 			default:
@@ -1232,16 +1230,19 @@ void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
 		for(u_int16_t i = 'a'; i <= 'z'; i++){
 			previous->transitions[i] = connecter;
 		}
+
 	//If we have '[A-Z]'
 	} else if(connecter->nfa_state_list.contains_uppercase == 1){
 		for(u_int16_t i = 'A'; i <= 'Z'; i++){
 			previous->transitions[i] = connecter;
 		}
+
 	//If we have '[a-zA-Z]'
 	} else if(connecter->nfa_state_list.contains_letters == 1){
 		for(u_int16_t i = 'a'; i <= 'z'; i++){
 			previous->transitions[i] = connecter;
 		}
+
 		for(u_int16_t i = 'A'; i <= 'Z'; i++){
 			previous->transitions[i] = connecter;
 		}

@@ -1864,7 +1864,7 @@ void test_case_run(u_int8_t test_case){
 			printf("Testing quote detection\n");
 			printf("Regex: [a-zA-Z]*.");
 	
-			tester = define_regular_expression("[a-zA-Z]+.", REGEX_VERBOSE);
+			tester = define_regular_expression("[a-zA-Z]*.", REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "kjlasdfaasba.";
@@ -1882,6 +1882,32 @@ void test_case_run(u_int8_t test_case){
 
 			//Define a test string
 			test_string = "aSb.";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+	
+			return;
+
+		case 69:
+			printf("Testing quote detection\n");
+			printf("Regex: \"[a-zA-Z]+.( )?\"");
+	
+			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
+			tester = define_regular_expression("\"[a-zA-Z]+.( )?\"", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "\"HelloWorld.\"";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "\"HelloWorld\"";
 			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
@@ -1911,7 +1937,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 67; i++){
+		for(u_int8_t i = 0; i < 70; i++){
 			test_case_run(i);
 		}
 	}
