@@ -82,6 +82,8 @@ typedef struct {
 	void* NFA;
 	//The pointer to the DFA, the user should also never touch this
 	void* DFA;
+	//The creation chain for the NFA
+	void* creation_chain;
 	//The state that the regex is in
 	regex_state_t state;
 } regex_t;

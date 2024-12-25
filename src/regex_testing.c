@@ -1991,7 +1991,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 7; i++){
+		for(u_int8_t i = 0; i < 72; i++){
 			test_case_run(i);
 		}
 	}
