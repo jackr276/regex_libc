@@ -1973,13 +1973,40 @@ void test_case_run(u_int8_t test_case){
 		//Currently causing issues
 		case 72:
 			printf("Testing filename matching\n");
-			printf("Regex: ([a-zA-Z]*(-)?)+.txt\n");
+			printf("Regex: ([a-zA-Z]*(-))+.txt\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("([a-zA-Z]*(-)?)+.txt", REGEX_VERBOSE);
+			tester = define_regular_expression("([a-zA-Z]*(-))+.txt", REGEX_VERBOSE);
 
 			//Define a test string
-			test_string = "fname-file-name.txt";
+			test_string = "fname-file-name-.txt";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "a.tx";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+	
+			return;
+
+		//Currently causing issues
+		case 73:
+			printf("Testing filename matching\n");
+			printf("Regex: (b(a)+-)*.txt\n");
+	
+			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
+			tester = define_regular_expression("(b(a)+-)*.txt", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "baaaa-baaaa-ba.txt";
 			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching

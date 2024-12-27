@@ -7,27 +7,25 @@
 #define REGEX_H
 
 //The accepting constant
-#define ACCEPTING 131
+#define ACCEPTING 132
 //Split_one_or_more is specifically used for the question mark(?) operator
-#define SPLIT_ZERO_OR_ONE 127 
+#define SPLIT_ZERO_OR_ONE 128 
 //Split_alternate is specifically used for the alternation(|) operator
-#define SPLIT_ALTERNATE 128
+#define SPLIT_ALTERNATE 129
 //Split Kleene is specifically used for the kleene star(*) operator
-#define SPLIT_KLEENE 129 
+#define SPLIT_KLEENE 130 
 //Split_Pos_clos is specifically used for the positive closure(+) operator
-#define SPLIT_POSITIVE_CLOSURE 130
+#define SPLIT_POSITIVE_CLOSURE 131
 //Define a wildcard
-#define WILDCARD 132
+#define WILDCARD 133
 //Define number 0-9
-#define NUMBER 133
+#define NUMBER 134
 //Define our a-z range
-#define LOWERCASE 134
+#define LOWERCASE 135
 //Define our A-Z range
-#define UPPERCASE 135
-//Dummy for us to use
-#define DUMMY 1;
+#define UPPERCASE 136
 //Define a-zA-Z
-#define LETTERS 136
+#define LETTERS 137
 //The maximum length of a regex is 150
 #define REGEX_LEN 150
 //This is the explicit concatenation character. It is used in place of actual concatenation

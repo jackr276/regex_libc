@@ -155,12 +155,11 @@ char* in_to_post(char* regex, regex_mode_t mode){
 			case '?':
 			case '|':
 			case ')':
-				//Add it in and move along
+				//Now add the char in
 				previous_char = *cursor;
 				*concat_cursor = *cursor;
 				cursor++;
 				concat_cursor++;
-
 				break;
 			//Handle an open parenthesis
 			case '(':
@@ -171,12 +170,6 @@ char* in_to_post(char* regex, regex_mode_t mode){
 					concat_cursor++;
 					break;
 				//If we see repetition, we'll add a dummy char in
-				} else if(previous_char == '*' || previous_char == '+' || previous_char == '?'){
-					//Add in a DUMMY char
-					*concat_cursor = '`';
-					concat_cursor++;
-					*concat_cursor = DUMMY;
-					concat_cursor++;
 				}
 
 				//We'll have to concatenate here
@@ -1092,7 +1085,7 @@ static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
 
 		//Cleanup
 		destroy_stack(stack, STATES_ONLY);
-//Set it in error state
+		//Set it in error state
 		regex->state = REGEX_ERR;
 		//Set these fo use
 		regex->creation_chain = head;
@@ -1132,6 +1125,36 @@ static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
 
 /* ================================================== DFA Methods ================================================== */
 
+/**
+ * For debugging only
+ */
+static void print_state(DFA_state_t* state){
+	printf("INSIDE: {");
+	//Print out what the state has in it
+	for(u_int16_t i = 0; i < state->nfa_state_list.length; i++){
+		u_int16_t opt = state->nfa_state_list.states[i]->opt;
+		if(opt >= 32 && opt <= 127){
+			printf("%c, ", opt);
+		}
+	}
+	
+	printf(" } -> ");
+
+	printf("REACHABLE: {");
+	for(u_int16_t i = 0; i < 145; i++){
+		if(state->transitions[i] != NULL){
+			if(i >= 32 && i <= 127){
+				printf("%c, ", i);
+			} else if (i == ACCEPTING){
+				printf("ACCEPTING, ");
+			}
+
+		} 	
+	}
+
+	
+	printf("}\n");
+}
 
 /**
  * Follow all of the arrows that we have and recursively build a DFA state that is itself
@@ -1144,10 +1167,9 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	}
 	//We can tell what to do based on our opt here
 	switch(start->opt){
-			case SPLIT_KLEENE:
-			case SPLIT_POSITIVE_CLOSURE:
-			//If we have a split_T2, we know that this state will always point back to
-			//itself along the next_opt line
+		case SPLIT_KLEENE:
+		case SPLIT_POSITIVE_CLOSURE:
+		case SPLIT_ZERO_OR_ONE:
 			//We'll only explore the next path, we've already accounted for the self reference
 			//Add this state to the list of NFA states
 			get_reachable_rec(start->next, list);
@@ -1226,7 +1248,7 @@ void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
 	
 	//This means that we'll connect everything 
 	if(connecter->nfa_state_list.contains_wild_card == 1){
-		for(u_int16_t i = 0; i < 126; i++){
+		for(u_int16_t i = 32; i < 127; i++){
 			previous->transitions[i] = connecter;
 		}
 	//If we have the '[0-9]' state
@@ -1297,14 +1319,15 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		left_opt_mem = NULL;
 		right_opt_mem = NULL;
 
+		//If we've gotten where we need to go
+		if(nfa_cursor->opt == go_until){
+			return dfa_start;
+		}
+
 		//If we've already gotten to this guy from a split, we'll move right on
 		if(nfa_cursor->visited == 3){
 			nfa_cursor = nfa_cursor->next;
 			continue;
-		}
-
-		if(nfa_cursor->opt == go_until){
-			return dfa_start;
 		}
 
 		//We have different processing rules for each of our special cases. The default is of course that we just have a char
@@ -1426,6 +1449,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Here is our actual "repeater"
 				//IDEA -- go until we see the next guy's opt
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt);
+				printf("%c\n", nfa_cursor->next->opt);
 
 
 				//Save these for later
@@ -1492,6 +1516,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Create the right DFA
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt);
 				
+				printf("%c\n", nfa_cursor->next->opt);
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1565,6 +1590,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 					nfa_cursor->visited = 3;
 				}
 
+				
 				//Advance the pointer
 				nfa_cursor = nfa_cursor->next;
 				break;
@@ -1719,7 +1745,6 @@ static void match(regex_match_t* match, regex_t* regex, char* string, u_int32_t 
 	u_int32_t current_index = starting_index;
 	//Scan through the string
 	while((ch = *match_string) != '\0'){
-
 		//For each character, we'll attempt to advance using the transition list. If the transition list at that
 		//character does not=NULL(0, remember it was calloc'd), then we can advance. If it is 0, we'll reset the search
 		if(current_state->transitions[(u_int16_t)ch] != NULL){
