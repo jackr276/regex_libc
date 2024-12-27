@@ -170,6 +170,13 @@ char* in_to_post(char* regex, regex_mode_t mode){
 					cursor++;
 					concat_cursor++;
 					break;
+				//If we see repetition, we'll add a dummy char in
+				} else if(previous_char == '*' || previous_char == '+' || previous_char == '?'){
+					//Add in a DUMMY char
+					*concat_cursor = '`';
+					concat_cursor++;
+					*concat_cursor = DUMMY;
+					concat_cursor++;
 				}
 
 				//We'll have to concatenate here
@@ -1911,11 +1918,14 @@ static void teardown_DFA(DFA_state_t* state){
  * Comprehensive cleanup function that cleans up everything related to the regex
  */
 void destroy_regex(regex_t* regex){
-	//Teardown the NFA
-	teardown_NFA((NFA_state_t*)(regex->creation_chain));
+	//If the state is invalid, don't bother destroying
+	if(regex->state != REGEX_ERR){
+		//Teardown the NFA
+		teardown_NFA((NFA_state_t*)(regex->creation_chain));
 
-	//Clean up the DFA
-	teardown_DFA((DFA_state_t*)(regex->DFA));
+		//Clean up the DFA
+		teardown_DFA((DFA_state_t*)(regex->DFA));
+	}
 
 	//Free the postfix expression
 	free(regex->regex);

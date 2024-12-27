@@ -24,6 +24,8 @@
 #define LOWERCASE 134
 //Define our A-Z range
 #define UPPERCASE 135
+//Dummy for us to use
+#define DUMMY 1;
 //Define a-zA-Z
 #define LETTERS 136
 //The maximum length of a regex is 150
