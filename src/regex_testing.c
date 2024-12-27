@@ -219,7 +219,7 @@ void test_case_run(u_int8_t test_case){
 	
 
 			//We should match
-			test_string = "zyxwvutabcdlmnop";
+			test_string = "zyxwvutadlmnop";
 			printf("TEST STRING: %s\n\n", test_string);
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 			
@@ -236,7 +236,7 @@ void test_case_run(u_int8_t test_case){
 			tester = define_regular_expression("a(bc)*dlmnop*d", REGEX_VERBOSE);
 
 			//Should have a match here
-			test_string = "asdklf;asdfabcbcdlmnopd";
+			test_string = "asdklf;asdfabcbcdlmnopppppppppppppppppppppppd";
 			printf("TEST STRING: %s\n\n", test_string);
 			
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
@@ -607,18 +607,18 @@ void test_case_run(u_int8_t test_case){
 
 		case 28:
 			printf("Testing parenthesization with kleene\n");
-			printf("REGEX: (ab(cd)*bcd)+\n");
+			printf("REGEX: (ab(cd)*bcd)+.\n");
 
 			//Initialization
-			tester = define_regular_expression("(ab(ef)*bcd)+", REGEX_VERBOSE);
+			tester = define_regular_expression("(ab(ef)*bcd)+.", REGEX_VERBOSE);
 
-			test_string = "aaaaavabefefefefefbcdbbbcdeflfas";
+			test_string = "aaaaavabefefefefefbcd.bbbcdeflfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 
-			test_string = "aaaaavabbcdabbcdbcdflfas";
+			test_string = "aaaaavabbcdabbcdabbcd.flfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
@@ -2000,13 +2000,13 @@ void test_case_run(u_int8_t test_case){
 		//Currently causing issues
 		case 73:
 			printf("Testing filename matching\n");
-			printf("Regex: (b(a)+-)*.txt\n");
+			printf("Regex: (ba*c)+.txt\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("(b(a)+-)*.txt", REGEX_VERBOSE);
+			tester = define_regular_expression("(ba+c)+.txt", REGEX_VERBOSE);
 
 			//Define a test string
-			test_string = "baaaa-baaaa-ba.txt";
+			test_string = "baaaacbaaaacba.txt";
 			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
