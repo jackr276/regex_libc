@@ -753,7 +753,7 @@ static void print_NFA(NFA_state_t* nfa){
 /**
  * Create a new state in memory that is completely identical to "state"
  */
-static NFA_state_t* copy_state(NFA_state_t* state){
+static NFA_state_t* copy_state(NFA_state_t* state, NFA_state_t** head){
 	//Create a new state
 	NFA_state_t* copy = (NFA_state_t*)calloc(1, sizeof(NFA_state_t));
 
@@ -762,8 +762,11 @@ static NFA_state_t* copy_state(NFA_state_t* state){
 	copy->next = state->next;
 	copy->opt = state->opt;
 	copy->next_opt = state->next_opt;
-	copy->next_created = state->next_created;
-	
+
+	//Attach this to the linked list
+	copy->next_created = *head;
+	(*head) = copy;
+
 	return copy;
 }
 
@@ -775,11 +778,7 @@ static NFA_state_t* copy_state(NFA_state_t* state){
 static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag, NFA_state_t** head){
 	//Create the fragment copy
 	NFA_fragement_t* copy = (NFA_fragement_t*)calloc(1, sizeof(NFA_fragement_t));
-	NFA_state_t* copied_state = copy_state(frag->start);
-	
-	//Attach this to the linked list
-	copied_state->next_created = *head;
-	(*head) = copied_state;
+	NFA_state_t* copied_state = copy_state(frag->start, head);
 	
 	//Copy the start state
 	copy->start = copied_state;
@@ -1328,12 +1327,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			return dfa_start;
 		}
 
-		if(nfa_cursor->opt == ACCEPTING && from_rep == 1){
+		if(nfa_cursor->opt == ACCEPTING && (from_rep == 1 || from_rep == 2)){
 			return dfa_start;
 		}
 
 		//If we've already gotten to this guy from a split, we'll move right on
-		if(nfa_cursor->visited == 3){
+		if(nfa_cursor->visited == 1 && from_rep != 2){
 			nfa_cursor = nfa_cursor->next;
 			continue;
 		}
@@ -1341,7 +1340,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 		//We have different processing rules for each of our special cases. The default is of course that we just have a char
 		switch(nfa_cursor->opt){
 			case SPLIT_ZERO_OR_ONE:
-				nfa_cursor->visited = 3;
+				nfa_cursor->visited = 1;
 				//Create the DFA for the straight path, marking each state as "off limits" whenever we see it.
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
@@ -1405,7 +1404,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 			//Handle an alternate split
 			case SPLIT_ALTERNATE:	
-				nfa_cursor->visited = 3;
+				nfa_cursor->visited = 1;
 				//Create two separate sub-DFAs
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, '\0', 0);
@@ -1450,7 +1449,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			//Handle the "0 or more" case, better known as Kleene star
 			case SPLIT_KLEENE:
 				//Mark as seen before we go any further
-				nfa_cursor->visited = 3;
+				nfa_cursor->visited = 1;
 
 				//Create the entire left sub_dfa(this one does not repeat)
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
@@ -1516,11 +1515,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			//Handle the "1 or more" case
 			case SPLIT_POSITIVE_CLOSURE:
 				//Avoid an infinite loop
-				nfa_cursor->visited = 3;
+				nfa_cursor->visited = 1;
 				//Create the left DFA
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
 				//Create the right DFA
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 1);
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1589,9 +1588,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				previous = temp;
 
 				//If we are flagging states, there may be times when we don't want to
-				if(flag_states == 1){
+				if(flag_states != 0){
 					//We've now visited this state
-					nfa_cursor->visited = 3;
+					nfa_cursor->visited = 1;
 				}
 
 				

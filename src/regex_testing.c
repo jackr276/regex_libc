@@ -133,7 +133,14 @@ void test_case_run(u_int8_t test_case){
 			
 			//Test matching
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+	
+			//Define the test string
+			test_string = "aaac a.kas";
+			printf("TEST STRING: %s\n\n", test_string);
 			
+			//Test matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+					
 			//Destroy
 			destroy_regex(tester);
 	
