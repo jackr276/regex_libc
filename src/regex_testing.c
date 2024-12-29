@@ -2072,6 +2072,35 @@ void test_case_run(u_int8_t test_case){
 	
 			return;
 
+		//Currently causing issues
+		case 75:
+			printf("Testing filename matching\n");
+			printf("Regex: ($*).(c|h)\n");
+	
+			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
+			tester = define_regular_expression("($*).(c|h)", REGEX_VERBOSE);
+
+			//Define a test string
+			test_string = "regex_testing.c";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "regex.h";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+	
+			return;
+
+
+
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
 			return;
