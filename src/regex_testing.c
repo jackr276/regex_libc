@@ -632,7 +632,7 @@ void test_case_run(u_int8_t test_case){
 			//We should have a match
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 
-			test_string = "aaaaavabbcdabbcdabbcd.flfas";
+			test_string = "aaaaavabbcdabefbcdabbcd.flfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
@@ -2132,7 +2132,7 @@ void test_case_run(u_int8_t test_case){
 			printf("Regex: ($+)@($+).((com)|(edu))\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("($*)@($*).((com)|(edu))", REGEX_VERBOSE);
+			tester = define_regular_expression("($+)@($+).((com)|(edu))", REGEX_VERBOSE);
 
 			//Define a test string -- should work 
 			test_string = "noreply@njit.edu";
