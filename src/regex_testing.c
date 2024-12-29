@@ -551,10 +551,10 @@ void test_case_run(u_int8_t test_case){
 
 		case 25:
 			printf("Testing parenthesization with kleene\n");
-			printf("REGEX: (ab(cd)bcd)+(flf)*\n");
+			printf("REGEX: (ab(cd)+bcd)+(flf)*\n");
 
 			//Initialization
-			tester = define_regular_expression("(ab(cd)bcd)+(flf)+", REGEX_VERBOSE);
+			tester = define_regular_expression("(ab(cd)+bcd)+(flf)+", REGEX_VERBOSE);
 
 			test_string = "aaaaavabcdbcdabcdbcdflfas";
 			printf("TEST STRING: %s\n\n", test_string);
@@ -2199,7 +2199,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 78; i++){
+		for(u_int8_t i = 0; i < 79; i++){
 			test_case_run(i);
 		}
 	}
