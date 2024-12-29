@@ -100,6 +100,8 @@ struct NFA_state_list_t {
 struct DFA_state_t {
 	//The list of the NFA states that make up the DFA state
 	NFA_state_list_t nfa_state_list;
+	//Hold the address of the NFA state
+	NFA_state_t* nfa_state;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
 	DFA_state_t* transitions[145];
@@ -1089,6 +1091,10 @@ static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
  * For debugging only
  */
 static void print_state(DFA_state_t* state){
+	if(state == NULL){
+		printf("NULL STATE\n");
+	}
+
 	printf("INSIDE: {");
 	//Print out what the state has in it
 	for(u_int16_t i = 0; i < state->nfa_state_list.length; i++){
@@ -1115,7 +1121,7 @@ static void print_state(DFA_state_t* state){
 	}
 
 	
-	printf("}\n");
+	printf("} NFA: %p\n", state->nfa_state);
 }
 
 /**
@@ -1186,9 +1192,14 @@ static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state
  * that are reachable at this state. This DFA state is dynamically allocated, and as such will need
  * to be destroyed at some point
  */
-static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
+static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, DFA_state_t** chain, u_int16_t* next_idx){
 	//Allocate a DFA state
 	DFA_state_t* dfa_state = (DFA_state_t*)calloc(1, sizeof(DFA_state_t));
+	dfa_state->nfa_state = nfa_state;
+	//Add this in
+	chain[*next_idx] = dfa_state;
+	//Increment
+	(*next_idx)++;
 
 	//Set to null as warning
 	dfa_state->next = NULL;
@@ -1233,7 +1244,6 @@ void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
 
 	//If we have '[a-zA-Z]'
 	} else if(connecter->nfa_state_list.contains_letters == 1){
-		printf("CONNECTING TO LETTERS\n");
 		for(u_int16_t i = 'a'; i <= 'z'; i++){
 			previous->transitions[i] = connecter;
 		}
@@ -1252,11 +1262,44 @@ void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
 
 
 /**
+ * Check for state equality
+ */
+static u_int8_t dfa_states_equal(DFA_state_t* a, DFA_state_t* b){
+	//By default not equal
+	if(a == NULL || b == NULL){
+		return 0;
+	}
+
+	//These could be equal
+	if(a->nfa_state == b->nfa_state){
+		return 1;
+	}
+
+	//Special case, they aren't equal because of a split
+	//Are the lengths equal?
+	if(a->nfa_state_list.length != b->nfa_state_list.length){
+		return 0;
+	}
+
+	//If they are, we'll check state by state
+	for(u_int16_t i = 0; i < a->nfa_state_list.length; i++){
+		//If these aren't equal, get out
+		if(a->nfa_state_list.states[i] != b->nfa_state_list.states[i]){
+			return 0;
+		}
+	}
+	
+	//If we get here we know its good
+	return 1;
+}
+
+
+/**
  * Translate an NFA into an equivalent DFA using the reachability matrix
  * method. We will recursively figure out which states are reachable from other states. Our
  * new linked list of states should help us with this
  */
-static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int16_t flag_states, char go_until, u_int8_t from_rep){
+static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_state_t* nfa_start, regex_mode_t mode, char go_until, u_int8_t from_rep){
 	//The starting state for our DFA
 	DFA_state_t* previous;
 	DFA_state_t* temp;
@@ -1269,10 +1312,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 	DFA_state_t* cursor;
 
 	//A dummy start state to enter into
-	DFA_state_t* dfa_start = create_DFA_state(NULL);
+	DFA_state_t* dfa_start = create_DFA_state(NULL, chain, next_idx);
 
-	//Advance previous
-	previous = dfa_start;	
+	//dfa_start->nfa_state = nfa_start;
+	previous = dfa_start;
 
 	//Maintain a cursor to the current NFA state
 	NFA_state_t* nfa_cursor = nfa_start;
@@ -1306,9 +1349,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 0);
+				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, nfa_cursor->next->opt, 0);
 
-				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
 				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
@@ -1366,8 +1409,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_ALTERNATE:	
 				nfa_cursor->visited = 1;
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
+				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, '\0', 0);
 
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1411,11 +1454,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Mark as seen before we go any further
 				nfa_cursor->visited = 1;
 
-				//IDEA -- go until we see the next guy's opt
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 1);
 				//Create the entire left sub_dfa(this one does not repeat)
-				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
-				//Here is our actual "repeater"
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
+
+				//IDEA -- go until we see the next guy's opt
+				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, nfa_cursor->next->opt, 0);
 				
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1477,19 +1520,34 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Avoid an infinite loop
 				nfa_cursor->visited = 1;
 
-				//Create the right DFA
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
-
 				//Create the left DFA
-				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
+
+				//Create the right DFA
+				//right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
+				//Where does it go to
+				right_opt = create_DFA_state(nfa_cursor->next_opt, chain, next_idx);
 
 				//Save these for later
 				left_opt_mem = left_opt;
-				right_opt_mem = right_opt;
+				//right_opt_mem = right_opt;
 
 				//Advance these so that we actually have them
 				left_opt = left_opt->next;
-				right_opt = right_opt->next;
+				//right_opt = right_opt->next;
+
+				for(u_int16_t i = 0; i < *next_idx; i++){
+					cursor = chain[i];
+					//We've found the right one
+					if(dfa_states_equal(cursor, right_opt) == 1){
+						break;
+					} 
+				}
+
+				//No longer need this
+				free(right_opt);
+				//This one is what we care about
+				right_opt = cursor;
 
 				/**
 				 * We'll now patch in the "left_opt" such that previous points to it. We'll
@@ -1505,32 +1563,9 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 	
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
-				cursor = right_opt;
-				
-				while(cursor->next != NULL){
-					cursor = cursor->next;
-				}
 
-				//Now that we're here, cursor holds the very end of the right sub-DFA
-				//Everything that we have in the cursor must point back to the left DFA
-				
-				//Everything that we have in the cursor must also point back to the right DFA
-				//Connect cursor to right_opt
-				connect_DFA_states(cursor, right_opt);
-
-				//Connect cursor to left_opt
-				connect_DFA_states(cursor, left_opt);
-			
-				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
 				previous = left_opt_mem;
-				while(previous->next != NULL){
-					previous = previous->next;
-				}
-
-				//We need to chain all of these together for the eventual memory freeing
-				previous->next = right_opt_mem;
-				previous = right_opt_mem;
 				while(previous->next != NULL){
 					previous = previous->next;
 				}
@@ -1540,7 +1575,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 			default:
 				//Create our state
-				temp = create_DFA_state(nfa_cursor);
+				temp = create_DFA_state(nfa_cursor, chain, next_idx);
 				//Connect previous to temp
 				connect_DFA_states(previous, temp);
 			
@@ -1548,13 +1583,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				previous->next = temp;
 				previous = temp;
 
-				//If we are flagging states, there may be times when we don't want to
-				if(flag_states != 0){
-					//We've now visited this state
-					nfa_cursor->visited = 1;
-				}
-
-				
 				//Advance the pointer
 				nfa_cursor = nfa_cursor->next;
 				break;
@@ -1654,7 +1682,13 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	//Now we'll use the NFA to create the DFA. We'll do this because DFA's are much more
 	//efficient to simulate since they are determinsitic, but they are much harder to create
 	//from regular expressions
-	regex->DFA = create_DFA(regex->NFA, mode, 0, '\0', 0);
+	DFA_state_t* chain[1000];
+	//Wipe it
+	memset(chain, 0, 1000*sizeof(DFA_state_t*));
+	u_int16_t next_idx = 0;
+
+	//Create the DFA
+	regex->DFA = create_DFA(chain, &next_idx, regex->NFA, mode, '\0', 0);
 
 	//If it didn't work
 	if(regex->DFA == NULL){
