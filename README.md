@@ -38,8 +38,70 @@ typedef enum {
 ```
 Note that the match function returns the very first match found. Subsequent matches require the user to advance the `starting_index` to where they wish to start. The `match_status_t` enumerated type is in my opinion self explanatory, so I will not detail it further.
 
+>[!NOTE]
+>The `match_end_idx` is exclusive. So for example, if the match struct returns `match_start_idx = 0` and `match_end_idx = 9`, that means that the match starts at 0 and goes up to **but does not include** index 9
+
 ### 3.) Cleaning up a regex
 ```C
 void destroy_regex(regex_t* regex)
 ```
 Since regex structs are dynamically allocated and contain many dynamically allocated parts, a cleanup function is needeed. As the user, you only need to pass in the reference to the regex struct to this function. The function will deallocate all memory. `regex_libc` is completely memory safe, so this cleanup function will avoid any/all memory leaks.
+
+## Example Usage:
+Here is a quick example of using this regex library to find all filenames that end in ".txt". 
+
+```C
+regex_match_t matcher;
+tester = define_regular_expression("$+.txt", REGEX_SILENT);
+
+//Define a test string
+test_string = "fname.txt";
+			
+//Test the matching
+regex_match(tester, &matcher, test_string, 0, REGEX_SILENT);
+
+//Display if we've found a match
+if(matcher.status == MATCH_FOUND){
+	printf("Match starts at index: %d and ends at index:%d\n", matcher.match_start_idx, matcher.match_end_idx);
+} else {
+	printf("No match.\n\n");
+}
+
+//Destroy the regex
+destroy_regex(tester)
+```
+This will display the following output in `REGEX_SILENT` mode:
+```Console
+Match starts at index: 0 and ends at index:9
+```
+
+In `REGEX_VERBOSE` mode, the following will be shown:
+```Console
+With concatenation characters added: $+`.`t`x`t
+Postfix regular expression: $+.`t`x`t`
+Postfix conversion: $+.`t`x`t`
+
+NFA conversion succeeded.
+State -->State -SPLIT_POSITIVE_CLOSURE->State -.->State -t->State -x->State -t->State -ACCEPTING->
+State -->
+
+Beginning DFA Conversion.
+
+DFA conversion succeeded.
+regex_t creation succeeded. Regex is now ready to be used.
+TEST STRING: fname.txt
+
+Pattern continued/started with character: f
+Pattern continued/started with character: n
+Pattern continued/started with character: a
+Pattern continued/started with character: m
+Pattern continued/started with character: e
+Pattern continued/started with character: .
+Pattern continued/started with character: t
+Pattern continued/started with character: x
+Pattern continued/started with character: t
+Match found!
+Match starts at index: 0 and ends at index:9
+```
+
+
