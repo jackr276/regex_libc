@@ -751,42 +751,6 @@ static void print_NFA(NFA_state_t* nfa){
 }
 
 /**
- * Create a new state in memory that is completely identical to "state"
- */
-static NFA_state_t* copy_state(NFA_state_t* state, NFA_state_t** head){
-	//Create a new state
-	NFA_state_t* copy = (NFA_state_t*)calloc(1, sizeof(NFA_state_t));
-
-	//Perform a deep copy
-	copy->visited = 0;
-	copy->next = state->next;
-	copy->opt = state->opt;
-	copy->next_opt = state->next_opt;
-
-	//Attach this to the linked list
-	copy->next_created = *head;
-	(*head) = copy;
-
-	return copy;
-}
-
-
-/**
- * Create a deep copy of a fragment that is totally independent from
- * the predecessor in memory
- */
-static NFA_fragement_t* copy_fragment(NFA_fragement_t* frag, NFA_state_t** head){
-	//Create the fragment copy
-	NFA_fragement_t* copy = (NFA_fragement_t*)calloc(1, sizeof(NFA_fragement_t));
-	NFA_state_t* copied_state = copy_state(frag->start, head);
-	
-	//Copy the start state
-	copy->start = copied_state;
-
-	return copy;
-}
-
-/**
  * Create an NFA from a postfix regular expression FIXME does not work for () combined with *, | or +
  */
 static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
@@ -905,11 +869,10 @@ static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
 			case '+':
 				//Grab the most recent fragment
 				frag_1 = pop(stack);
-				frag_2 = copy_fragment(frag_1, &head);
 
 				//We'll create a new state that acts as a split, going back to the the original state
 				//This acts as our optional 1 or more 
-				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_2->start);
+				split = create_state(SPLIT_POSITIVE_CLOSURE, NULL, frag_1->start);
 
 				//Linked list attachment
 				if(head == NULL){
@@ -927,13 +890,10 @@ static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
 
 				//Create a new fragment that represent this whole structure and push to the stack
 				//Since this one is "1 or more", we will have the start of our next fragment be the start of the old fragment
-				//THIS is the problem here, we can't have this guy point to fragment->start. It has to point to the immediately preceeding
-				//state
 				push(stack, create_fragment(frag_1->start, init_list(split)));
 
 				//Free this pointer
 				free(frag_1);
-				free(frag_2);
 
 				break;
 
@@ -1522,7 +1482,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Create the left DFA
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
-						//Save these for later
+
+				//Save these for later
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
 
@@ -1540,12 +1501,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				connect_DFA_states(previous, right_opt);
 
 				//Connect previous to left_opt
-				connect_DFA_states(previous,left_opt);
+				connect_DFA_states(previous, left_opt);
 	
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
 				cursor = right_opt;
-
 				
 				while(cursor->next != NULL){
 					cursor = cursor->next;
