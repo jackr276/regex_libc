@@ -1972,6 +1972,13 @@ void test_case_run(u_int8_t test_case){
 			//Test the matching
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 
+			//Display if we've found a match
+			if(matcher.status == MATCH_FOUND){
+				printf("Match starts at index: %d and ends at index:%d\n", matcher.match_start_idx, matcher.match_end_idx);
+			} else {
+				printf("No match.\n\n");
+			}
+
 			//Define a test string -- should work 
 			test_string = "a.tx";
 			printf("TEST STRING: %s\n\n", test_string);
@@ -2017,10 +2024,10 @@ void test_case_run(u_int8_t test_case){
 			printf("Regex: (ba*c)+.txt\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("(ba+c)+.txt", REGEX_VERBOSE);
+			tester = define_regular_expression("(ba*c)+.txt", REGEX_VERBOSE);
 
 			//Define a test string
-			test_string = "baaaacbaaaacba.txt";
+			test_string = "bacbac.txt";
 			printf("TEST STRING: %s\n\n", test_string);
 			
 			//Test the matching
@@ -2038,7 +2045,32 @@ void test_case_run(u_int8_t test_case){
 	
 			return;
 
+		//Test how failure is handles
+		case 74:
+			printf("Testing filename matching\n");
+			printf("Regex: (ba*c+.txt\n");
+	
+			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
+			tester = define_regular_expression("(ba*c+.txt", REGEX_VERBOSE);
 
+			//Define a test string
+			test_string = "bacbac.txt";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Define a test string -- should work 
+			test_string = "a.tx";
+			printf("TEST STRING: %s\n\n", test_string);
+			
+			//Test the matching
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			//Destroy the regex
+			destroy_regex(tester);
+	
+			return;
 
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:
@@ -2059,7 +2091,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 72; i++){
+		for(u_int8_t i = 0; i < 75; i++){
 			test_case_run(i);
 		}
 	}
