@@ -100,6 +100,8 @@ struct NFA_state_list_t {
 struct DFA_state_t {
 	//The list of the NFA states that make up the DFA state
 	NFA_state_list_t nfa_state_list;
+	//Hold the address of the NFA state
+	NFA_state_t* nfa_state;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
 	DFA_state_t* transitions[145];
@@ -1189,6 +1191,7 @@ static void get_all_reachable_states(NFA_state_t* start, NFA_state_list_t* state
 static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state){
 	//Allocate a DFA state
 	DFA_state_t* dfa_state = (DFA_state_t*)calloc(1, sizeof(DFA_state_t));
+	dfa_state->nfa_state = nfa_state;
 
 	//Set to null as warning
 	dfa_state->next = NULL;
@@ -1248,6 +1251,39 @@ void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
 			previous->transitions[opt] = connecter;		
 		}
 	}
+}
+
+
+/**
+ * Check for state equality
+ */
+static u_int8_t dfa_states_equal(DFA_state_t* a, DFA_state_t* b){
+	//By default not equal
+	if(a == NULL || b == NULL){
+		return 0;
+	}
+
+	//These could be equal
+	if(a->nfa_state == b->nfa_state){
+		return 1;
+	}
+
+	//Special case, they aren't equal because of a split
+	//Are the lengths equal?
+	if(a->nfa_state_list.length != b->nfa_state_list.length){
+		return 0;
+	}
+
+	//If they are, we'll check state by state
+	for(u_int16_t i = 0; i < a->nfa_state_list.length; i++){
+		//If these aren't equal, get out
+		if(a->nfa_state_list.states[i] != b->nfa_state_list.states[i]){
+			return 0;
+		}
+	}
+	
+	//If we get here we know its good
+	return 1;
 }
 
 
@@ -1477,19 +1513,33 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Avoid an infinite loop
 				nfa_cursor->visited = 1;
 
-				//Create the right DFA
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
-
 				//Create the left DFA
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
 
+				//Create the right DFA
+				//right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
+				//Where does it go to
+				right_opt = create_DFA_state(nfa_cursor->next_opt);
+				print_state(right_opt);
+
+
 				//Save these for later
 				left_opt_mem = left_opt;
-				right_opt_mem = right_opt;
+				//right_opt_mem = right_opt;
 
 				//Advance these so that we actually have them
 				left_opt = left_opt->next;
-				right_opt = right_opt->next;
+				//right_opt = right_opt->next;
+
+				//Let's see where we match
+				cursor = dfa_start;
+				while(cursor != NULL && dfa_states_equal(cursor, right_opt) != 1){
+					cursor = cursor->next;
+				}
+				print_state(cursor);
+
+				free(right_opt);
+				right_opt = cursor;
 
 				/**
 				 * We'll now patch in the "left_opt" such that previous points to it. We'll
@@ -1505,21 +1555,21 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 	
 				//We'll now need to navigate to the end of the right opt repeater
 				//sub-DFA
-				cursor = right_opt;
+			//	cursor = right_opt;
 				
-				while(cursor->next != NULL){
-					cursor = cursor->next;
-				}
+			//	while(cursor->next != NULL){
+			//		cursor = cursor->next;
+			//	}
 
 				//Now that we're here, cursor holds the very end of the right sub-DFA
 				//Everything that we have in the cursor must point back to the left DFA
 				
 				//Everything that we have in the cursor must also point back to the right DFA
 				//Connect cursor to right_opt
-				connect_DFA_states(cursor, right_opt);
+			//	connect_DFA_states(cursor, right_opt);
 
 				//Connect cursor to left_opt
-				connect_DFA_states(cursor, left_opt);
+			//	connect_DFA_states(cursor, left_opt);
 			
 				//We need to chain all of these together for the eventual memory freeing
 				previous->next = left_opt_mem;
@@ -1529,11 +1579,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				}
 
 				//We need to chain all of these together for the eventual memory freeing
-				previous->next = right_opt_mem;
-				previous = right_opt_mem;
-				while(previous->next != NULL){
-					previous = previous->next;
-				}
+			//	previous->next = right_opt_mem;
+			//	previous = right_opt_mem;
+			//	while(previous->next != NULL){
+			//		previous = previous->next;
+			//	}
 
 				//Get out
 				return dfa_start;
