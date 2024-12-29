@@ -1344,11 +1344,10 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Create the DFA for the straight path, marking each state as "off limits" whenever we see it.
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
-				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
-
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 0);
 
+				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
 				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
@@ -1368,12 +1367,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				 * 		patch in the end of right_opt to point to left_opt
 				 */
 
-				//Connect previous to left_opt
-				connect_DFA_states(previous, left_opt);
-
 				//Connect previous to right_opt
 				connect_DFA_states(previous, right_opt);
-				
+			
+				//Connect previous to left_opt
+				connect_DFA_states(previous, left_opt);
+	
 				//Now we'll need to ensure that right_opt(At the very end) points to left_opt
 				//Let's first advance to the very end of right_opt
 				cursor = right_opt;
@@ -1451,12 +1450,12 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Mark as seen before we go any further
 				nfa_cursor->visited = 1;
 
+				//IDEA -- go until we see the next guy's opt
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 1);
 				//Create the entire left sub_dfa(this one does not repeat)
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
 				//Here is our actual "repeater"
-				//IDEA -- go until we see the next guy's opt
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 1);
-
+				
 				//Save these for later
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
@@ -1516,12 +1515,13 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			case SPLIT_POSITIVE_CLOSURE:
 				//Avoid an infinite loop
 				nfa_cursor->visited = 1;
-				//Create the left DFA
-				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
+
 				//Create the right DFA
 				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
 
-				//Save these for later
+				//Create the left DFA
+				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
+						//Save these for later
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
 

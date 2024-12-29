@@ -344,6 +344,13 @@ void test_case_run(u_int8_t test_case){
 			//We should have a match
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 
+			test_string = "as   --*dfasfdabbbbbbbbbbbbbbbbbcdefgeakjs";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			//We should have a match
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+
 			//Clean up
 			destroy_regex(tester);
 			
@@ -591,7 +598,7 @@ void test_case_run(u_int8_t test_case){
 
 		case 27:
 			printf("Testing parenthesization with kleene and positive closure\n");
-			printf("REGEX: (ab(cd)*bcd)+e\n");
+			printf("REGEX: (ab(ef)*bcd)+e\n");
 
 			//Initialization
 			tester = define_regular_expression("(ab(ef)*bcd)+e", REGEX_VERBOSE);
@@ -602,7 +609,7 @@ void test_case_run(u_int8_t test_case){
 			//We should have a match
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 
-			test_string = "aaaaavabbcdabcdbcdflfas";
+			test_string = "aaaaavabefefefefefbcdabefefefefbcdbcdflfas";
 			printf("TEST STRING: %s\n\n", test_string);
 	
 			//We should have a match
