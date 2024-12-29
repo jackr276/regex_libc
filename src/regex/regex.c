@@ -1091,6 +1091,10 @@ static void create_NFA(regex_t* regex, char* postfix, regex_mode_t mode){
  * For debugging only
  */
 static void print_state(DFA_state_t* state){
+	if(state == NULL){
+		printf("NULL STATE\n");
+	}
+
 	printf("INSIDE: {");
 	//Print out what the state has in it
 	for(u_int16_t i = 0; i < state->nfa_state_list.length; i++){
@@ -1117,7 +1121,7 @@ static void print_state(DFA_state_t* state){
 	}
 
 	
-	printf("}\n");
+	printf("} NFA: %p\n", state->nfa_state);
 }
 
 /**
@@ -1307,8 +1311,8 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 	//A dummy start state to enter into
 	DFA_state_t* dfa_start = create_DFA_state(NULL);
 
-	//Advance previous
-	previous = dfa_start;	
+	dfa_start->nfa_state = nfa_start;
+	previous = dfa_start;
 
 	//Maintain a cursor to the current NFA state
 	NFA_state_t* nfa_cursor = nfa_start;
@@ -1447,11 +1451,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Mark as seen before we go any further
 				nfa_cursor->visited = 1;
 
-				//IDEA -- go until we see the next guy's opt
-				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 1);
 				//Create the entire left sub_dfa(this one does not repeat)
 				left_opt = create_DFA(nfa_cursor->next, mode, 0, '\0', 0);
-				//Here is our actual "repeater"
+
+				//IDEA -- go until we see the next guy's opt
+				right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, 1);
 				
 				//Save these for later
 				left_opt_mem = left_opt;
@@ -1521,6 +1525,7 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 				//Where does it go to
 				right_opt = create_DFA_state(nfa_cursor->next_opt);
 				print_state(right_opt);
+				printf("\n\n");
 
 
 				//Save these for later
@@ -1533,10 +1538,11 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 
 				//Let's see where we match
 				cursor = dfa_start;
+				print_state(cursor);
 				while(cursor != NULL && dfa_states_equal(cursor, right_opt) != 1){
 					cursor = cursor->next;
+					print_state(cursor);
 				}
-				print_state(cursor);
 
 				free(right_opt);
 				right_opt = cursor;
@@ -1561,6 +1567,13 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			//		cursor = cursor->next;
 			//	}
 
+				previous->next = left_opt_mem;
+				previous = left_opt_mem;
+				while(previous->next != NULL){
+					previous = previous->next;
+				}
+
+
 				//Now that we're here, cursor holds the very end of the right sub-DFA
 				//Everything that we have in the cursor must point back to the left DFA
 				
@@ -1572,12 +1585,6 @@ static DFA_state_t* create_DFA(NFA_state_t* nfa_start, regex_mode_t mode, u_int1
 			//	connect_DFA_states(cursor, left_opt);
 			
 				//We need to chain all of these together for the eventual memory freeing
-				previous->next = left_opt_mem;
-				previous = left_opt_mem;
-				while(previous->next != NULL){
-					previous = previous->next;
-				}
-
 				//We need to chain all of these together for the eventual memory freeing
 			//	previous->next = right_opt_mem;
 			//	previous = right_opt_mem;
