@@ -1172,6 +1172,7 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 		case SPLIT_KLEENE:
 		case SPLIT_POSITIVE_CLOSURE:
 		case SPLIT_ZERO_OR_ONE:
+		case SPLIT_ALTERNATE:
 			//We'll only explore the next path, we've already accounted for the self reference
 			//Add this state to the list of NFA states
 			get_reachable_rec(start->next, list);
