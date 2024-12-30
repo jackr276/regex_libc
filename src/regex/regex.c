@@ -1133,24 +1133,10 @@ static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
 	if(start == NULL || list == NULL){
 		return;
 	}
-	//We can tell what to do based on our opt here
-	switch(start->opt){
-		case SPLIT_KLEENE:
-		case SPLIT_POSITIVE_CLOSURE:
-		case SPLIT_ZERO_OR_ONE:
-		case SPLIT_ALTERNATE:
-			//We'll only explore the next path, we've already accounted for the self reference
-			//Add this state to the list of NFA states
-			get_reachable_rec(start->next, list);
-			break;
-		default:
-			//Add this state to the list of NFA states
-			list->states[list->length] = start;
 
-			//Increment the length
-			list->length++;
-			break;
-	}
+	//We can tell what to do based on our opt here
+	list->states[list->length] = start;
+	list->length++;
 
 	//If we find an accepting state, then set this flag. This will speed up our match function
 	if(start->opt == ACCEPTING){
