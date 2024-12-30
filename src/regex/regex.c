@@ -1109,7 +1109,7 @@ static void print_state(DFA_state_t* state){
 	printf(" } -> ");
 
 	printf("REACHABLE: {");
-	for(u_int16_t i = 0; i < 145; i++){
+	for(u_int16_t i = 0; i < 135; i++){
 		if(state->transitions[i] != NULL){
 			if(i >= 32 && i <= 127){
 				printf("%c, ", i);
@@ -1257,7 +1257,8 @@ static u_int8_t dfa_states_equal(DFA_state_t* a, DFA_state_t* b){
 	}
 
 	//These could be equal
-	if(a->nfa_state == b->nfa_state){
+	if((a->nfa_state != NULL && b->nfa_state != NULL) &&
+		(a->nfa_state == b->nfa_state)){
 		return 1;
 	}
 
