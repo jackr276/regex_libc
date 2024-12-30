@@ -1204,45 +1204,56 @@ static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, DFA_state_t** chain
  * Make use of a variety of logic to properly make previous point to connecter
  */
 void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
-	//We have numerous different cases to handle here
-	
-	//This means that we'll connect everything 
-	if(connecter->nfa_state_list.contains_wild_card == 1){
-		for(u_int16_t i = 32; i < 127; i++){
-			previous->transitions[i] = connecter;
-		}
-	//If we have the '[0-9]' state
-	} else if(connecter->nfa_state_list.contains_numbers == 1){
-		for(u_int16_t i = '0'; i <= '9'; i++){
-			previous->transitions[i] = connecter;
-		}
-	//If we have the '[a-z]' state
-	} else if(connecter->nfa_state_list.contains_lowercase == 1){
-		for(u_int16_t i = 'a'; i <= 'z'; i++){
-			previous->transitions[i] = connecter;
-		}
+	//Save ourselves here
+	if(connecter == NULL){
+		return;
+	}
 
-	//If we have '[A-Z]'
-	} else if(connecter->nfa_state_list.contains_uppercase == 1){
-		for(u_int16_t i = 'A'; i <= 'Z'; i++){
-			previous->transitions[i] = connecter;
+	//If the state is null, we'll have to go to his transitions
+	if(connecter->nfa_state == NULL){
+		for(u_int16_t i = 0; i < 135; i++){
+			connect_DFA_states(previous, connecter->transitions[i]);
 		}
-
-	//If we have '[a-zA-Z]'
-	} else if(connecter->nfa_state_list.contains_letters == 1){
-		for(u_int16_t i = 'a'; i <= 'z'; i++){
-			previous->transitions[i] = connecter;
-		}
-
-		for(u_int16_t i = 'A'; i <= 'Z'; i++){
-			previous->transitions[i] = connecter;
-		}
-	//Otherwise we just have a regular state
 	} else {
-		for(u_int16_t i = 0; i < connecter->nfa_state_list.length; i++){
-			u_int16_t opt = connecter->nfa_state_list.states[i]->opt;
-			previous->transitions[opt] = connecter;		
+		//This means that we'll connect everything 
+		if(connecter->nfa_state_list.contains_wild_card == 1){
+			for(u_int16_t i = 32; i < 127; i++){
+				previous->transitions[i] = connecter;
+			}
+		//If we have the '[0-9]' state
+		} else if(connecter->nfa_state_list.contains_numbers == 1){
+			for(u_int16_t i = '0'; i <= '9'; i++){
+				previous->transitions[i] = connecter;
+			}
+		//If we have the '[a-z]' state
+		} else if(connecter->nfa_state_list.contains_lowercase == 1){
+			for(u_int16_t i = 'a'; i <= 'z'; i++){
+				previous->transitions[i] = connecter;
+			}
+
+		//If we have '[A-Z]'
+		} else if(connecter->nfa_state_list.contains_uppercase == 1){
+			for(u_int16_t i = 'A'; i <= 'Z'; i++){
+				previous->transitions[i] = connecter;
+			}
+
+		//If we have '[a-zA-Z]'
+		} else if(connecter->nfa_state_list.contains_letters == 1){
+			for(u_int16_t i = 'a'; i <= 'z'; i++){
+				previous->transitions[i] = connecter;
+			}
+
+			for(u_int16_t i = 'A'; i <= 'Z'; i++){
+				previous->transitions[i] = connecter;
+			}
+		//Otherwise we just have a regular state
+		} else {
+			for(u_int16_t i = 0; i < connecter->nfa_state_list.length; i++){
+				u_int16_t opt = connecter->nfa_state_list.states[i]->opt;
+				previous->transitions[opt] = connecter;		
+			}
 		}
+
 	}
 }
 
@@ -1344,8 +1355,8 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				right_opt_mem = right_opt;
 
 				//Advance these up(remember, we have "dummy heads")
-				left_opt = left_opt->next;
-				right_opt = right_opt->next;
+				//left_opt = left_opt->next;
+				//right_opt = right_opt->next;
 
 				/**
 				 * We now have
@@ -1404,8 +1415,8 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				right_opt_mem = right_opt;
 
 				//Advance past the dummy head
-				left_opt = left_opt->next;
-				right_opt = right_opt->next;
+				//left_opt = left_opt->next;
+				//right_opt = right_opt->next;
 
 				/**
 				 * To patch this DFA in, we'll make everything in previous point to both the left
@@ -1452,8 +1463,8 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				right_opt_mem = right_opt;
 
 				//Advance these so that we actually have them
-				left_opt = left_opt->next;
-				right_opt = right_opt->next;
+				//left_opt = left_opt->next;
+				//right_opt = right_opt->next;
 
 				/**
 				 * We'll now patch in the "left_opt" such that previous points to it. We'll
@@ -1509,7 +1520,6 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 
 				//Create the left DFA
 				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
-
 				//Create the right DFA
 				//right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
 				//Where does it go to
@@ -1520,7 +1530,7 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				//right_opt_mem = right_opt;
 
 				//Advance these so that we actually have them
-				left_opt = left_opt->next;
+				//left_opt = left_opt->next;
 				//right_opt = right_opt->next;
 
 				for(u_int16_t i = 0; i < *next_idx; i++){
@@ -1544,7 +1554,6 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 		
 				//Connect previous to right_opt
 				connect_DFA_states(previous, right_opt);
-
 				//Connect previous to left_opt
 				connect_DFA_states(previous, left_opt);
 	

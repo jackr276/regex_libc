@@ -1994,10 +1994,10 @@ void test_case_run(u_int8_t test_case){
 		//Currently causing issues
 		case 72:
 			printf("Testing filename matching\n");
-			printf("Regex: ([a-zA-Z]*(-))+.txt\n");
+			printf("Regex: ([a-zA-Z](-)?)+.txt\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("([a-zA-Z]*(-))+.txt", REGEX_VERBOSE);
+			tester = define_regular_expression("([a-zA-Z](-)?)+.txt", REGEX_VERBOSE);
 
 			//Define a test string
 			test_string = "fname-file-name-.txt";
@@ -2159,7 +2159,7 @@ void test_case_run(u_int8_t test_case){
 			printf("Regex: ([a-zA-Z]+(_)?)*(@)([a-zA-Z]+).((com)|(edu))\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("([a-zA-Z]+(_)?)*(@)([a-zA-Z]+).((com)|(edu))", REGEX_VERBOSE);
+			tester = define_regular_expression("([a-zA-Z]+(_[a-zA-Z]+)?)(@)([a-zA-Z]+).((com)|(edu))", REGEX_VERBOSE);
 
 			//Define a test string -- should work 
 			test_string = "noreply@njit.edu";
@@ -2186,7 +2186,7 @@ void test_case_run(u_int8_t test_case){
 			printf("Regex: ([a-zA-Z])+\n");
 	
 			//IDEA -- add a "dummy" or "epsilon" state in between a +/*/? and ()'s
-			tester = define_regular_expression("([a-zA-Z]+)(_|@)([a-zA-Z]+).(com|edu)", REGEX_VERBOSE);
+			tester = define_regular_expression("([a-zA-Z]+)(@|_)([a-zA-Z]+).(com|edu)", REGEX_VERBOSE);
 
 			//Define a test string -- should work 
 			test_string = "noreply@njit.edu";
@@ -2227,7 +2227,7 @@ int main(int argc, char** argv){
 	
 	//Run them all
 	if(argc == 1){
-		for(u_int8_t i = 0; i < 79; i++){
+		for(u_int8_t i = 0; i < 80; i++){
 			test_case_run(i);
 		}
 	}
