@@ -150,9 +150,15 @@ Using our previous example, the infix expression: ($*)\`@\`($*)\`.\`((c\`o\`m)|(
 ### Step 3: Converting the postfix regular expression into an equivalent NFA
 The **McNaughton-Yamada-Thompson** process relies on the use of NFA "fragments" and a stack. The core idea is simple: as we encounter regular characters, we create NFA fragments with a single state and push them onto the stack. When we encounter an operator, we will pop the first one or two(depending on the operator) most recent fragments off of the stack and combine them appropriately with a special kind of "split" state. This new fragment is then pushed back onto the stack. In essence, we are creating mini-NFAs for each process and then combining them when we see operators. The modifications that have been made to the algorithm in this project are as follows:  
 1. The use of different "split" states: SPLIT_KLEENE, SPLIT_ALTERNATE, SPLIT_POSITIVE_CLOSURE, SPLIT_ZERO_OR_ONE. This allows us to take special action when we see these states
-2. When a positive closure(+) is encountered, the fragment that is being operated on is cloned. This has the effect of making a postive closure like (a)+ look like a(a)* in the NFA. This allows for more efficient DFA creation because the positive closure state can be put behind the repeating state.
+2. Each NFA state contains a "next_created" state. This is done for the purposes of memory management. It would be impossible to free the memory if we didn't have this, because many of these states are self referential.
 
-Once done, this NFA will have **as many characters as the regular expression has states**. There is no optimization that occurs of any kind, meaning that inefficient or overly complicated regular expressions will become inefficient and overly complicated NFAs.
+Once done, this NFA will have **as many states as the regular expression has characters**. There is no optimization that occurs of any kind, meaning that inefficient or overly complicated regular expressions will become inefficient and overly complicated NFAs.
+
+Here is a renditition of the NFA that will be created with this particular regular expression:   
+
+![NFA drawio](https://github.com/user-attachments/assets/84609723-cb85-4d4b-8dfc-d822ed0c344c)
+
+
 
 ### Step 4: Converting the NFA into an equivalent DFA
 
