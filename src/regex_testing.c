@@ -207,6 +207,11 @@ void test_case_run(u_int8_t test_case){
 			printf("TEST STRING: %s\n\n", test_string);
 
 			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "bcdacd";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
 			
 			destroy_regex(tester);
 				
@@ -2207,6 +2212,27 @@ void test_case_run(u_int8_t test_case){
 	
 			return;
 
+		case 80:
+			printf("Testing associativity\n");
+			printf("REGEX: 'a(bc)+'\n");
+
+			//Initialization
+			tester = define_regular_expression("a(bc)+", REGEX_VERBOSE);
+
+			//We should match here
+			test_string = "bcdabcbcbcbcbcd";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+
+			test_string = "bcdacd";
+			printf("TEST STRING: %s\n\n", test_string);
+
+			regex_match(tester, &matcher, test_string, 0, REGEX_VERBOSE);
+			
+			destroy_regex(tester);
+				
+			return;
 
 		//Added to avoid comptime errors, we shouldn't reach this
 		default:

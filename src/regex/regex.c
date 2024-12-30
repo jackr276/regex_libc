@@ -1297,7 +1297,7 @@ static u_int8_t dfa_states_equal(DFA_state_t* a, DFA_state_t* b){
  * method. We will recursively figure out which states are reachable from other states. Our
  * new linked list of states should help us with this
  */
-static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_state_t* nfa_start, regex_mode_t mode, char go_until, u_int8_t from_rep){
+static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_state_t* nfa_start, regex_mode_t mode, char go_until){
 	//The starting state for our DFA
 	DFA_state_t* previous;
 	DFA_state_t* temp;
@@ -1329,12 +1329,8 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 			return dfa_start;
 		}
 
-		if(nfa_cursor->opt == ACCEPTING && (from_rep == 1 || from_rep == 2)){
-			return dfa_start;
-		}
-
 		//If we've already gotten to this guy from a split, we'll move right on
-		if(nfa_cursor->visited == 1 && from_rep != 2){
+		if(nfa_cursor->visited == 1){
 			nfa_cursor = nfa_cursor->next;
 			continue;
 		}
@@ -1347,16 +1343,12 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				//This marking of off limits will ensure that the next function call will not retrace this
 				//one's steps
 				//Create the right sub-DFA that is the optional "0 or 1" DFA
-				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, nfa_cursor->next->opt, 0);
+				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, nfa_cursor->next->opt);
 
-				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0');
 				//Save these for later for memory deletion
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
-
-				//Advance these up(remember, we have "dummy heads")
-				//left_opt = left_opt->next;
-				//right_opt = right_opt->next;
 
 				/**
 				 * We now have
@@ -1407,16 +1399,12 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 			case SPLIT_ALTERNATE:	
 				nfa_cursor->visited = 1;
 				//Create two separate sub-DFAs
-				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
-				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0');
+				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, '\0');
 
 				//Save these for later
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
-
-				//Advance past the dummy head
-				//left_opt = left_opt->next;
-				//right_opt = right_opt->next;
 
 				/**
 				 * To patch this DFA in, we'll make everything in previous point to both the left
@@ -1453,18 +1441,15 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				nfa_cursor->visited = 1;
 
 				//Create the entire left sub_dfa(this one does not repeat)
-				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0');
 
 				//IDEA -- go until we see the next guy's opt
-				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, nfa_cursor->next->opt, 0);
+				right_opt = create_DFA(chain, next_idx, nfa_cursor->next_opt, mode, nfa_cursor->next->opt);
+
 				
 				//Save these for later
 				left_opt_mem = left_opt;
 				right_opt_mem = right_opt;
-
-				//Advance these so that we actually have them
-				//left_opt = left_opt->next;
-				//right_opt = right_opt->next;
 
 				/**
 				 * We'll now patch in the "left_opt" such that previous points to it. We'll
@@ -1482,7 +1467,7 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				cursor = right_opt;
 				
 				//Skip over
-				while(cursor->next != NULL){
+				while(cursor->next != NULL && cursor->next->nfa_state_list.contains_accepting_state == 0){
 					cursor = cursor->next;
 				}
 
@@ -1519,20 +1504,15 @@ static DFA_state_t* create_DFA(DFA_state_t** chain, u_int16_t* next_idx, NFA_sta
 				nfa_cursor->visited = 1;
 
 				//Create the left DFA
-				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0', 0);
+				left_opt = create_DFA(chain, next_idx, nfa_cursor->next, mode, '\0');
 				//Create the right DFA
-				//right_opt = create_DFA(nfa_cursor->next_opt, mode, 0, nfa_cursor->next->opt, from_rep == 2 ? 1 : 2);
 				//Where does it go to
 				right_opt = create_DFA_state(nfa_cursor->next_opt, chain, next_idx);
 
 				//Save these for later
 				left_opt_mem = left_opt;
-				//right_opt_mem = right_opt;
 
-				//Advance these so that we actually have them
-				//left_opt = left_opt->next;
-				//right_opt = right_opt->next;
-
+				//Let's now search for the correct state that we need to point to
 				for(u_int16_t i = 0; i < *next_idx; i++){
 					cursor = chain[i];
 					//We've found the right one
@@ -1684,7 +1664,7 @@ regex_t* define_regular_expression(char* pattern, regex_mode_t mode){
 	u_int16_t next_idx = 0;
 
 	//Create the DFA
-	regex->DFA = create_DFA(chain, &next_idx, regex->NFA, mode, '\0', 0);
+	regex->DFA = create_DFA(chain, &next_idx, regex->NFA, mode, '\0');
 
 	//If it didn't work
 	if(regex->DFA == NULL){
