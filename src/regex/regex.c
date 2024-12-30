@@ -104,7 +104,7 @@ struct DFA_state_t {
 	NFA_state_t* nfa_state;
 	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
 	//chars range from 0-127
-	DFA_state_t* transitions[145];
+	DFA_state_t* transitions[135];
 	//The next dfa_state that was made, this will help us in freeing
 	DFA_state_t* next;
 };
