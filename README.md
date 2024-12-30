@@ -152,7 +152,7 @@ The **McNaughton-Yamada-Thompson** process relies on the use of NFA "fragments" 
 1. The use of different "split" states: SPLIT_KLEENE, SPLIT_ALTERNATE, SPLIT_POSITIVE_CLOSURE, SPLIT_ZERO_OR_ONE. This allows us to take special action when we see these states
 2. Each NFA state contains a "next_created" state. This is done for the purposes of memory management. It would be impossible to free the memory if we didn't have this, because many of these states are self referential.
 
-Once done, this NFA will have **as many states as the regular expression has characters**. There is no optimization that occurs of any kind, meaning that inefficient or overly complicated regular expressions will become inefficient and overly complicated NFAs.
+Once done, this NFA will have **as many states as the regular expression has characters**. There is no optimization that occurs of any kind, meaning that inefficient or overly complicated regular expressions will become inefficient and overly complicated NFAs. Each NFA state is only allowed to have **two transitions**. This greatly simplifies creation and avoids any headaches with having a variable number of transitions. Regular states will only use one transition, whilst split states do make use of the two.
 
 Here is a renditition of the NFA that will be created with this particular regular expression:   
 
@@ -161,5 +161,167 @@ Here is a renditition of the NFA that will be created with this particular regul
 
 
 ### Step 4: Converting the NFA into an equivalent DFA
+For our purposes, the NFA is only an intermediate step. We do not want to use the NFA to perform matching because it is **non-deterministic**, meaning that we'd likely have to try many separate paths before determining if we have a match or not. Luckily, every NFA has an equivalent DFA, and those are deterministic. So, all that we need to do now is create the equivalent DFA for our NFA and we should be good to go. My implementation is somewhat like Sipser's table implementation, but there are some differences that make it more programmatically sound. For some context, here are the two C structs that are used in the DFA:
+```C
+/**
+ * A state that we will use for our DFA caching scheme. It is well known that DFA's are more efficent
+ * than NFAs, so this will help us speed things up
+ */
+struct DFA_state_t {
+	//The list of the NFA states that make up the DFA state
+	NFA_state_list_t nfa_state_list;
+	//Hold the address of the NFA state
+	NFA_state_t* nfa_state;
+	//This list is a list of all the states that come from this DFA state. We will use the char itself to index this state. Remember that printable
+	//chars range from 0-144
+	DFA_state_t* transitions[135];
+	//The next dfa_state that was made, this will help us in freeing
+	DFA_state_t* next;
+};
 
+/**
+ * When converting from an NFA to a DFA, we represent each DFA state as a list of reachable
+ * NFA states. This struct will be used for this purpose
+ */
+struct NFA_state_list_t {
+	NFA_state_t* states[145];
+	//Length of our list
+	u_int16_t length;
+	//Does this list contain an accepting state?
+	u_int8_t contains_accepting_state;
+	//Does this list have a wildcard?
+	u_int8_t contains_wild_card;
+	//Does this list have a NUMBERS state?
+	u_int8_t contains_numbers;
+	//Does this list containt LOWERCASE?
+	u_int8_t contains_lowercase;
+	//Does this state contain uppercase?
+	u_int8_t contains_uppercase;
+	//Does this have all the letters
+	u_int8_t contains_letters;
+};
+```
+Let's parse these structs. DFA_state_t first holds something of type NFA_state_list_t. The NFA_state_list_t holds all of the NFA states that this DFA state makes up. If you review Sipser's formula for conversion of NFAs to DFAs, you will see that DFA states are made up of 1 or many NFA states that can be **reached** from that DFA state. This is what this here intends to mimic. There is also a pointer to another NFA_state_t. This is there simply to help with DFA_state equality and acts as an efficiency speedup. If we want to compare to DFA states, we can first start by comparing the memory addresses of the NFA states that they were both derived from. If this fails, we can then compare their NFA_state_lists for equality. This kind of comparison is needed for the implementation of **positive closure(+)**. There is also an array of 135 DFA_state_t* pointers. This is where the real efficiency happens. We **encode** the transition char as an index in this array. This allows us to match very quickly. For example, if DFA_state_t* state1 should go to state2 when we see char 'a'(ASCII 97), then state1->transitions[97] = state2. We need 135 as opposed to 128 because there are some special states like ACCEPTING(131) that have encodings above the normal ASCII range for obvious reasons. Note that we have several boolean(u_int8_t) values inside of the NFA_state_list_t. This is simply there to make it easier for us to handle special characters like wildcards($) and others, as opposed to having to search through the state list every single time.
 
+To create the DFA, we go through state by state in the NFA. For any "SPLIT" states that we encounter, we will mark them as being "visited". This ensures that we don't have an infinite loop of state creation. States like SPLIT_ALTERNATE, SPLIT_ZERO_OR_ONE and SPLIT_KLEENE will trigger a recursive call that recursively builds out their left and right hand NFA connections as DFAs themselves. SPLIT_POSITIVE_CLOSURE is a special case, because a positive closure state always comes after the states that need to be repeated. As such, only one recursive call is made for the positive closure state. For regular states, a simple creation takes place that forms the base case of our whole operation. That is as follows:
+```C
+//Create our state
+temp = create_DFA_state(nfa_cursor, chain, next_idx);
+//Connect previous to temp
+connect_DFA_states(previous, temp);
+
+//Advance the current DFA pointer
+previous->next = temp;
+previous = temp;
+
+//Advance the pointer
+nfa_cursor = nfa_cursor->next;
+break;
+
+//================================DFA state function================================
+static DFA_state_t* create_DFA_state(NFA_state_t* nfa_state, DFA_state_t** chain, u_int16_t* next_idx){
+	//Allocate a DFA state
+	DFA_state_t* dfa_state = (DFA_state_t*)calloc(1, sizeof(DFA_state_t));
+	dfa_state->nfa_state = nfa_state;
+	//Add this in
+	chain[*next_idx] = dfa_state;
+	//Increment
+	(*next_idx)++;
+
+	//Set to null as warning
+	dfa_state->next = NULL;
+
+	//Get all of the reachable NFA states for that DFA state, this is how we handle splits
+	if(nfa_state != NULL){
+		get_all_reachable_states(nfa_state, &(dfa_state->nfa_state_list));
+	}
+
+	//Return a pointer to our state
+	return dfa_state;
+}
+
+//=============================Reachable function===================================
+/**
+ * Follow all of the arrows that we have and recursively build a DFA state that is itself
+ * a list of all the reachable NFA states
+ */
+static void get_reachable_rec(NFA_state_t* start, NFA_state_list_t* list){
+	//Base case
+	if(start == NULL || list == NULL){
+		return;
+	}
+
+	//We can tell what to do based on our opt here
+	list->states[list->length] = start;
+	list->length++;
+
+	//If we find an accepting state, then set this flag. This will speed up our match function
+	if(start->opt == ACCEPTING){
+		list->contains_accepting_state = 1;
+	} else if(start->opt == WILDCARD){
+		//If we find a wildcard set this flag
+		list->contains_wild_card = 1;
+	} else if(start->opt == NUMBER){
+		list->contains_numbers = 1;
+	} else if(start->opt == LOWERCASE){
+		list->contains_lowercase = 1;
+	} else if(start->opt == UPPERCASE){
+		list->contains_uppercase = 1;
+	} else if(start->opt == LETTERS){
+		list->contains_letters = 1;
+	}
+}
+```
+This is how the base case DFA state creation is handled. In terms of the connections, there is a special connect_DFA_states function that will use the trick that we mentioned earlier to connect two states using their transitions[]. I've included the function here:
+```C
+/**
+ * Make use of a variety of logic to properly make previous point to connecter
+ */
+void connect_DFA_states(DFA_state_t* previous, DFA_state_t* connecter){
+	//We have numerous different cases to handle here
+	
+	//This means that we'll connect everything 
+	if(connecter->nfa_state_list.contains_wild_card == 1){
+		for(u_int16_t i = 32; i < 127; i++){
+			previous->transitions[i] = connecter;
+		}
+	//If we have the '[0-9]' state
+	} else if(connecter->nfa_state_list.contains_numbers == 1){
+		for(u_int16_t i = '0'; i <= '9'; i++){
+			previous->transitions[i] = connecter;
+		}
+	//If we have the '[a-z]' state
+	} else if(connecter->nfa_state_list.contains_lowercase == 1){
+		for(u_int16_t i = 'a'; i <= 'z'; i++){
+			previous->transitions[i] = connecter;
+		}
+
+	//If we have '[A-Z]'
+	} else if(connecter->nfa_state_list.contains_uppercase == 1){
+		for(u_int16_t i = 'A'; i <= 'Z'; i++){
+			previous->transitions[i] = connecter;
+		}
+
+	//If we have '[a-zA-Z]'
+	} else if(connecter->nfa_state_list.contains_letters == 1){
+		for(u_int16_t i = 'a'; i <= 'z'; i++){
+			previous->transitions[i] = connecter;
+		}
+
+		for(u_int16_t i = 'A'; i <= 'Z'; i++){
+			previous->transitions[i] = connecter;
+		}
+	//Otherwise we just have a regular state
+	} else {
+		for(u_int16_t i = 0; i < connecter->nfa_state_list.length; i++){
+			u_int16_t opt = connecter->nfa_state_list.states[i]->opt;
+			previous->transitions[opt] = connecter;		
+		}
+	}
+}
+```
+
+This should give you a basic idea of how the DFA creation algorithm works. For a full view of how it works, please view the source code here: [regex.c](https://github.com/jackr276/regex_libc/blob/main/src/regex/regex.c).
+
+## Future Work
+This project is in a working state as of right now, passing all test cases that I can think of giving it. THere are of course many more features that I could add, say for instance anchoring, but I feel like the fundamentals are already here in this library. If you find any issues, I would encourage you to open an issue [here](https://github.com/jackr276/regex_libc/issues) and I will be sure to take a look. This has been a wonderful learning experience for me and I hope that it will work as well as it does for me as a regular expression matching tool.
