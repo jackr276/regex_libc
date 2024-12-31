@@ -2,7 +2,7 @@
 Author: [Jack Robbins](https://www.github.com/jackr276)
 
 ## Introduction
-This project is a custom implementation of a regular expression matching library, using **Thompson's Construction**, also known as the **McNaughton–Yamada–Thompson algorithm** for regular expression to NFA conversion. Following this, a custom DFA creation algorithm is used. This has served both as a learning exercise for me, and as a tool that I will continue to use in other projects of my own. If other people wish to use or improve upon my project here, I welcome that and as such have licensed this under GPL 3.0. This README contains the documentation for the API an in-depth explanation of how the project works. In it's current implementation, we only support *, ?, (), | +, [a-z], $(wildcard), [0-9], [A-Z] and [a-zA-Z]. I am hoping to continue to build atop it as needed.
+This project is a custom implementation of a regular expression matching tool, using **Thompson's Construction**, also known as the **McNaughton–Yamada–Thompson algorithm** for regular expression to NFA conversion. Following this, a custom DFA creation algorithm is used. This has served both as a learning exercise for me, and as a tool that I will continue to use in other projects of my own. If other people wish to use or improve upon my project here, I welcome that and as such have licensed this under GPL 3.0. This README contains the documentation for the API an in-depth explanation of how the project works. In it's current implementation, we only support *, ?, (), | +, [a-z], $(wildcard), [0-9], [A-Z] and [a-zA-Z]. I am hoping to continue to build atop it as needed.
 
 ## API Details
 There are really on 3 main functions that are exposed to the user via the `regex.h` header file. They are as follows:  
