@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+//Just for timing
+#include <time.h>
+
 
 /**
 * Define a testing function for us here. "test_case" is what case we want to test, and fall through
@@ -2246,16 +2249,28 @@ void test_case_run(u_int8_t test_case){
 */
 int main(int argc, char** argv){
 	u_int32_t argument;
+	clock_t begin;
+	clock_t end;
+	double time_spent;
 
 	if(argc == 2 && (sscanf(argv[1], "%u", &argument) > 0)){
+		begin = clock();
 		test_case_run(argument);
+		end = clock();
+		time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+		printf("\n\nTime Taken: %.8f seconds\n\n", time_spent);
 	}
 	
 	//Run them all
 	if(argc == 1){
+		begin = clock();
 		for(u_int8_t i = 0; i < 80; i++){
 			test_case_run(i);
 		}
+		end = clock();
+		time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+		printf("\n\nTime Taken: %.8f seconds\n\n", time_spent);
+
 	}
 
 }
