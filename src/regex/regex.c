@@ -529,6 +529,7 @@ char* in_to_post(char* regex, regex_mode_t mode){
 					printf("ERROR: Unmatched closing parenthesis");
 					//Free this because we know it's bad
 					free(postfix);
+					free(regex_with_concatenation);
 					//Cleanup
 					destroy_stack(operator_stack, STATES_ONLY);
 					return NULL;
@@ -555,9 +556,10 @@ char* in_to_post(char* regex, regex_mode_t mode){
 
 		//If we get this, it means that we have an unmatched parenthesis
 		if(stack_cursor == '('){
-			printf("ERROR: Unmatched opening parenthesis");
+			printf("ERROR: Unmatched opening parenthesis\n");
 			//Free this because we know it's bad
 			free(postfix);
+			free(regex_with_concatenation);
 			//Cleanup
 			destroy_stack(operator_stack, STATES_ONLY);
 			return NULL;
